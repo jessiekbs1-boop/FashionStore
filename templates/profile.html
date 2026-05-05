@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Informations personnelles{% endblock %}
+{% block content %}
+<section class="page-header page-header-split">
+  <div>
+    <span class="section-tag">Mon compte</span>
+    <h2>Profil utilisateur</h2>
+    <p>Consulte tes informations et mets ton compte a jour en toute securite.</p>
+  </div>
+  <a href="{{ url_for('auth.profile', edit=1) }}" class="btn btn-primary">Modifier mes informations</a>
+</section>
+
+<div class="profile-layout">
+  <aside class="profile-card">
+    <div class="profile-avatar profile-avatar-lg">
+      {% if current_user.profile_photo %}
+        <img src="{{ url_for('static', filename='images/' ~ current_user.profile_photo) }}" alt="Photo de profil de {{ current_user.nom }}">
+      {% else %}
+        {{ (current_user.nom[:1] if current_user.nom else 'U')|upper }}
+      {% endif %}
+    </div>
+    <h3>{{ current_user.nom }}</h3>
+    <p>{{ current_user.email }}</p>
+    <span class="chip">{{ current_user.role|capitalize }}</span>
+    {% if current_user.localisation %}
+    <p class="mt-2 text-muted"><i class="fa-solid fa-location-dot"></i> {{ current_user.localisation }}</p>
+    {% endif %}
+  </aside>
+
+  <section class="profile-edit-card {% if edit_mode %}edit-highlight{% endif %}" id="profile-edit-form">
+    <h3>Modifier mes informations</h3>
+    <form method="POST" action="{{ url_for('auth.update_profile') }}" enctype="multipart/form-data" class="profile-form">
+      <div class="mb-3">
+        <label for="nom" class="form-label">Nom d'utilisateur</label>
+        <input type="text" class="form-control" id="nom" name="nom" value="{{ current_user.nom }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="profile_photo" class="form-label">Photo de profil (optionnel)</label>
+        <input type="file" class="form-control" id="profile_photo" name="profile_photo" accept=".png,.jpg,.jpeg,.webp,.gif">
+      </div>
+
+      <div class="mb-3">
+        <label for="current_password" class="form-label">Mot de passe actuel (confirmation)</label>
+        <input type="password" class="form-control" id="current_password" name="current_password" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="new_password" class="form-label">Nouveau mot de passe (optionnel)</label>
+        <input type="password" class="form-control" id="new_password" name="new_password" minlength="6" placeholder="Laisser vide pour conserver l'actuel">
+      </div>
+
+      <div class="profile-actions">
+        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+        <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-primary">Voir le profil</a>
+      </div>
+    </form>
+  </section>
+</div>
+
+{% if edit_mode %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var target = document.getElementById('profile-edit-form');
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

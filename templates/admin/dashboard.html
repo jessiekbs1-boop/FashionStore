@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord admin{% endblock %}
+{% block content %}
+<section class="page-header page-header-split">
+  <div>
+    <span class="section-tag">Administration</span>
+    <h2>Tableau de bord administrateur</h2>
+    <p>Surveille les produits publiés par tous les vendeurs.</p>
+  </div>
+  <a href="{{ url_for('admin.gestion_utilisateurs') }}" class="btn btn-primary btn-lg">Gérer les utilisateurs</a>
+</section>
+
+<div class="stats-grid mb-4">
+  <article class="stat-card">
+    <span>Utilisateurs</span>
+    <strong>{{ users|length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Produits publiés</span>
+    <strong>{{ products|length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Commandes</span>
+    <strong>{{ orders|length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Vendeurs actifs</span>
+    <strong>{{ users|selectattr('role', 'equalto', 'vendeur')|list|length }}</strong>
+  </article>
+</div>
+
+{% if produits %}
+<div class="product-grid-compact">
+  {% for item in produits %}
+  <article class="product-card-compact">
+    <div class="product-image-wrap">
+      {% if item.image_principale %}
+      <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" class="product-image" alt="{{ item.nom }}">
+      {% else %}
+      <div class="product-image-placeholder">Sans image</div>
+      {% endif %}
+    </div>
+    <div class="product-body-compact">
+      <h3>{{ item.nom }}</h3>
+      <div class="vendor-info-compact">
+        <span class="vendor-avatar-small">
+          {% if item.vendeur.profile_photo %}
+          <img src="{{ url_for('static', filename='images/' ~ item.vendeur.profile_photo) }}" alt="{{ item.vendeur.nom }}">
+          {% else %}
+          {{ (item.vendeur.nom[:1] if item.vendeur.nom else 'V')|upper }}
+          {% endif %}
+        </span>
+        <span class="vendor-text">
+          <strong>{{ item.vendeur.nom }}</strong>
+        </span>
+      </div>
+      <div class="price-big">{{ item.prix }} $</div>
+      <div class="product-action-compact">
+        <a href="{{ url_for('admin.gestion_produits_admin') }}" class="btn btn-primary btn-sm">Gérer</a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-shirt"></i>
+  <h3>Aucun produit publié</h3>
+  <p>Les produits publiés par les vendeurs apparaîtront ici.</p>
+</div>
+{% endif %}
+{% endblock %}

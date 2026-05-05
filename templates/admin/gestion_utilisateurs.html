@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Gestion des utilisateurs{% endblock %}
+{% block content %}
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Montserrat', sans-serif;
+  }
+  th, td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+  th {
+    background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+    color: white;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  .btn-warning {
+    background: linear-gradient(135deg, #f39c12, #f1c40f);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+  }
+  .btn-danger {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .btn-danger:hover {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+  }
+</style>
+
+<h2>Gestion des utilisateurs</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Email</th>
+      <th>Rôle</th>
+      <th>Actif</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>{{ user.nom }}</td>
+      <td>{{ user.email }}</td>
+      <td>{{ user.role }}</td>
+      <td>{{ 'Oui' if user.actif else 'Non' }}</td>
+      <td>
+        {% if user.actif %}
+        <form method="POST" action="{{ url_for('admin.desactiver_utilisateur', user_id=user.id) }}" style="display:inline;">
+          <button type="submit" class="btn-warning">Désactiver</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.supprimer_utilisateur', user_id=user.id) }}" style="display:inline;">
+          <button type="submit" class="btn-danger" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Paiement - Store Fashion{% endblock %}
+{% block content %}
+<style>
+    .section { margin: 20px auto; padding: 20px; max-width: 600px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }
+    label { display: block; margin: 10px 0 5px; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 10px; }
+    .btn { background-color: #28a745; color: white; padding: 10px; border: none; cursor: pointer; width: 100%; }
+    .btn:hover { background-color: #218838; }
+</style>
+<div class="section">
+    <h2>Paiement de votre commande</h2>
+    <form action="{{ url_for('client.traiter_paiement') }}" method="POST">
+        <input type="hidden" name="order_id" value="{{ commande.id }}">
+        <!-- Delivery options -->
+        <label>Mode de livraison</label>
+        <div>
+            <label><input type="radio" name="mode_livraison" value="livraison" id="livraison_radio"> Être livré</label>
+            <label><input type="radio" name="mode_livraison" value="retrait" id="retrait_radio"> Récupérer en boutique</label>
+        </div>
+
+        <div id="livraison_fields" style="display:none; margin-top:10px;">
+            <label>Adresse de livraison</label>
+            <input type="text" name="adresse" id="adresse_input" placeholder="Adresse complète">
+
+            <label>Frais de livraison</label>
+            <input type="text" name="frais_livraison" id="frais_input" readonly>
+
+            <label>Date de livraison estimée</label>
+            <input type="text" name="date_livraison" id="date_input" readonly>
+        </div>
+        <label>Nom complet</label>
+        <input type="text" name="nom" required>
+
+        <label>Mode de paiement</label>
+        <select name="mode" id="mode" onchange="afficherChampPaiement()" required>
+            <option value="">-- Choisir un moyen --</option>
+            <option value="Carte Bancaire">Carte Bancaire</option>
+            <option value="Mobile Money">Mobile Money</option>
+            <option value="CinetPay">CinetPay</option>
+        </select>
+
+        <div id="carte" style="display:none;">
+            <label>Numéro de carte</label>
+            <input type="text" name="carte">
+
+            <label>Date d'expiration</label>
+            <input type="month" name="expiration">
+
+            <label>CVV</label>
+            <input type="text" name="cvv">
+        </div>
+
+        <div id="mobile" style="display:none;">
+            <label>Réseau Mobile</label>
+            <select name="reseau">
+                <option value="M-Pesa">M-Pesa</option>
+                <option value="Airtel Money">Airtel Money</option>
+                <option value="Orange Money">Orange Money</option>
+                <option value="Afrimoney">Afrimoney</option>
+            </select>
+
+            <label>Numéro de téléphone</label>
+            <input type="text" name="telephone">
+
+            <label>Code PIN Mobile Money</label>
+            <input type="password" id="pin_mobile" name="pin" placeholder="Entrez le code PIN">
+        </div>
+
+        <div id="cinetpay_info" style="display:none;" class="alert alert-info">
+            Le paiement CinetPay sera cree en statut <strong>en attente</strong>.
+            Vous pourrez ensuite le confirmer depuis l'historique des commandes.
+        </div>
+
+        <label>Montant à payer</label>
+        <input type="text" name="montant" id="montant_input" value="{{ commande.total }}" readonly>
+
+        <button type="submit" class="btn">Valider le Paiement</button>
+    </form>
+</div>
+
+<script>
+    function afficherChampPaiement() {
+        var mode = document.getElementById("mode").value;
+        var pinInput = document.getElementById("pin_mobile");
+        document.getElementById("carte").style.display = mode === "Carte Bancaire" ? "block" : "none";
+        document.getElementById("mobile").style.display = mode === "Mobile Money" ? "block" : "none";
+        document.getElementById("cinetpay_info").style.display = mode === "CinetPay" ? "block" : "none";
+        pinInput.required = mode === "Mobile Money";
+    }
+
+    // Delivery selection and server-side fee calculation
+    (function(){
+        const livraisonRadio = document.getElementById('livraison_radio');
+        const retraitRadio = document.getElementById('retrait_radio');
+        const livraisonFields = document.getElementById('livraison_fields');
+        const fraisInput = document.getElementById('frais_input');
+        const dateInput = document.getElementById('date_input');
+        const montantInput = document.getElementById('montant_input');
+        const adresseInput = document.getElementById('adresse_input');
+        const orderId = document.querySelector('input[name="order_id"]').value;
+
+        function showLivraison() {
+            livraisonFields.style.display = 'block';
+            if (adresseInput.value && adresseInput.value.trim().length>5) {
+                fetchFee(adresseInput.value.trim());
+            }
+        }
+
+        function hideLivraison() {
+            livraisonFields.style.display = 'none';
+            fraisInput.value = '';
+            dateInput.value = '';
+            montantInput.value = '{{ commande.total }}';
+        }
+
+        function toggle() {
+            if (livraisonRadio.checked) showLivraison(); else hideLivraison();
+        }
+
+        async function fetchFee(address) {
+            try {
+                const resp = await fetch('{{ url_for('client.delivery_calc') }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({address: address, order_id: parseInt(orderId)})
+                });
+                if (!resp.ok) {
+                    console.warn('Delivery calc error', resp.status);
+                    return;
+                }
+                const data = await resp.json();
+                if (data.fee !== undefined) {
+                    fraisInput.value = data.fee.toFixed ? data.fee.toFixed(2) : data.fee;
+                    dateInput.value = data.eta || '';
+                    const base = parseFloat('{{ commande.total }}') || 0;
+                    montantInput.value = (base + (parseFloat(data.fee) || 0)).toFixed(2);
+                }
+            } catch (e) {
+                console.error('delivery calc failed', e);
+            }
+        }
+
+        livraisonRadio && livraisonRadio.addEventListener('change', toggle);
+        retraitRadio && retraitRadio.addEventListener('change', toggle);
+        adresseInput && adresseInput.addEventListener('blur', function(){ if (livraisonRadio.checked) fetchFee(adresseInput.value.trim()); });
+
+        // initialize
+        window.addEventListener('DOMContentLoaded', function(){
+            {% if commande.mode_livraison == 'livraison' %}
+                livraisonRadio.checked = true; showLivraison();
+                adresseInput.value = "{{ commande.adresse or '' }}";
+                if (adresseInput.value) fetchFee(adresseInput.value);
+            {% elif commande.mode_livraison == 'retrait' %}
+                retraitRadio.checked = true; hideLivraison();
+            {% endif %}
+        });
+    })();
+
+    afficherChampPaiement();
+</script>
+{% endblock %}

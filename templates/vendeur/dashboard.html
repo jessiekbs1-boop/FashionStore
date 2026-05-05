@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord Vendeur{% endblock %}
+{% block content %}
+<section class="page-header page-header-split">
+  <div>
+    <span class="section-tag">Espace vendeur</span>
+    <h2>Bienvenue, {{ current_user.nom }}</h2>
+    <p>Voici tes produits publiés et ton activité récente.</p>
+  </div>
+  <a href="{{ url_for('vendeur.ajouter_produit') }}" class="btn btn-primary btn-lg">Ajouter un produit</a>
+</section>
+
+<div class="stats-grid mb-4">
+  <article class="stat-card">
+    <span>Produits</span>
+    <strong>{{ total_products }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Stock total</span>
+    <strong>{{ total_quantity }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Ventes</span>
+    <strong>{{ total_sales }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Revenus</span>
+    <strong>{{ '%.2f'|format(revenus) }} $</strong>
+  </article>
+  <article class="stat-card">
+    <span>Note moyenne</span>
+    <strong>{{ '%.1f'|format(average_rating) }} / 5</strong>
+  </article>
+  <article class="stat-card">
+    <span>Nouveaux messages</span>
+    <strong>{{ unread_messages }}</strong>
+  </article>
+</div>
+
+{% if produits %}
+<div class="product-grid-compact">
+  {% for item in produits %}
+  <article class="product-card-compact">
+    <div class="product-image-wrap">
+      {% if item.image_principale %}
+      <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" class="product-image" alt="{{ item.nom }}">
+      {% else %}
+      <div class="product-image-placeholder">Sans image</div>
+      {% endif %}
+    </div>
+    <div class="product-body-compact">
+      <h3>{{ item.nom }}</h3>
+      <div class="category-small">{{ item.categorie or 'Produit' }}</div>
+      <div class="price-big">{{ item.prix }} $</div>
+      <div class="product-action-compact">
+        <a href="{{ url_for('vendeur.modifier_produit', produit_id=item.id) }}" class="btn btn-primary btn-sm">Modifier</a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-shirt"></i>
+  <h3>Aucun produit publié</h3>
+  <p>Commence par publier ton premier produit pour le voir s'afficher ici.</p>
+  <a href="{{ url_for('vendeur.ajouter_produit') }}" class="btn btn-primary">Publier un produit</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Mes favoris{% endblock %}
+{% block content %}
+<section class="page-header">
+  <span class="section-tag">Wishlist</span>
+  <h2>Mes favoris</h2>
+  <p>Retrouve rapidement les articles que tu as likés.</p>
+</section>
+
+{% if favoris %}
+<div class="product-grid">
+  {% for favori in favoris %}
+  <article class="product-card">
+    <div class="product-image-wrap">
+      {% if favori.product.image_principale %}
+      <img src="{{ url_for('static', filename='images/' ~ favori.product.image_principale) }}" class="product-image" alt="{{ favori.product.nom }}">
+      {% else %}
+      <div class="product-image-placeholder">Sans image</div>
+      {% endif %}
+    </div>
+    <div class="product-body">
+      <div class="product-meta">
+        <span class="chip">{{ favori.product.vendeur.nom }}</span>
+        <span class="chip chip-price">{{ favori.product.prix }} $</span>
+      </div>
+      <h3>{{ favori.product.nom }}</h3>
+      <p>{{ favori.product.description or 'Aucune description fournie.' }}</p>
+      <div class="product-action">
+        <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-primary">Voir le catalogue</a>
+        <form method="POST" action="{{ url_for('client.toggle_favori', product_id=favori.product.id) }}">
+          <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-heart-crack"></i> Retirer</button>
+        </form>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-regular fa-heart"></i>
+  <h3>Aucun favori pour l'instant</h3>
+  <p>Ajoute des articles à ta wishlist depuis la page produits.</p>
+  <a href="{{ url_for('client.voir_produits') }}" class="btn btn-primary">Explorer les produits</a>
+</div>
+{% endif %}
+{% endblock %}

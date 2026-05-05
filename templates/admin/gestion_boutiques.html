@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Gestion des Boutiques{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Gestion des Boutiques</h2>
+
+    <h4>Ajouter une boutique</h4>
+    <form method="POST" action="{{ url_for('admin.ajouter_boutique') }}">
+        <label>Nom</label>
+        <input type="text" name="nom" required>
+        <label>Adresse</label>
+        <input type="text" name="address">
+        <label>Frais de livraison (EUR)</label>
+        <input type="number" step="0.01" name="delivery_fee" value="5.0">
+        <button type="submit" class="btn btn-primary">Ajouter</button>
+    </form>
+
+    <hr>
+    <h4>Liste des boutiques</h4>
+    <table class="table">
+        <thead><tr><th>Id</th><th>Nom</th><th>Adresse</th><th>Frais</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for shop in shops %}
+            <tr>
+                <td>{{ shop.id }}</td>
+                <td>{{ shop.nom }}</td>
+                <td>{{ shop.address or shop.address }}</td>
+                <td>{{ '%.2f'|format(shop.delivery_fee or 0) }}</td>
+                <td>
+                    <a href="{{ url_for('admin.modifier_boutique', shop_id=shop.id) }}" class="btn btn-sm btn-secondary">Modifier</a>
+                    <form action="{{ url_for('admin.supprimer_boutique', shop_id=shop.id) }}" method="POST" style="display:inline-block;">
+                        <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer?')">Supprimer</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

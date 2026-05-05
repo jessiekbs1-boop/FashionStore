@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Modifier Boutique{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Modifier Boutique</h2>
+    <form method="POST">
+        <label>Nom</label>
+        <input type="text" name="nom" value="{{ shop.nom }}" required>
+        <label>Adresse</label>
+        <input type="text" name="address" value="{{ shop.address or '' }}">
+        <label>Frais de livraison</label>
+        <input type="number" step="0.01" name="delivery_fee" value="{{ shop.delivery_fee or 0 }}">
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Gestion des produits{% endblock %}
+{% block content %}
+<h2>Gestion des produits</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Description</th>
+      <th>Prix</th>
+      <th>Quantité</th>
+      <th>Vendeur</th>
+      <th>Image</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for produit in products %}
+    <tr>
+      <td>{{ produit.nom }}</td>
+      <td>{{ produit.description }}</td>
+      <td>{{ produit.prix }} $</td>
+      <td>{{ produit.quantite }}</td>
+      <td>{{ produit.vendeur.nom }}</td>
+      <td>
+        {% if produit.image %}
+        <img src="{{ url_for('static', filename='images/' ~ produit.image) }}" alt="{{ produit.nom }}" style="max-height: 50px;">
+        {% endif %}
+      </td>
+      <td>
+<form method="POST" action="{{ url_for('admin.supprimer_produit_admin', product_id=produit.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

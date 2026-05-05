@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Paiement CinetPay{% endblock %}
+{% block content %}
+<section class="page-header">
+  <span class="section-tag">CinetPay</span>
+  <h2>Finaliser le paiement</h2>
+  <p>Vous allez être redirigé vers la plateforme CinetPay pour confirmer votre paiement.</p>
+</section>
+
+<div class="order-card" style="max-width: 760px; margin: 0 auto;">
+  <div class="order-card-top">
+    <div>
+      <h3>Référence {{ payment.transaction_id }}</h3>
+      <small>Commande #{{ payment.order.id }}</small>
+    </div>
+    <span class="badge text-bg-warning">{{ payment.statut|capitalize }}</span>
+  </div>
+
+  <div class="order-items-preview">
+    <div><strong>Montant</strong><span>{{ payment.montant }} EUR</span></div>
+    <div><strong>Méthode</strong><span>{{ payment.methode }}</span></div>
+    <div><strong>Date</strong><span>{{ payment.date.strftime('%d/%m/%Y %H:%M') }}</span></div>
+  </div>
+
+  <div class="empty-state" style="padding: 1.5rem; margin-top: 1rem;">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <h3>Redirection vers CinetPay...</h3>
+    <p>Vous allez être redirigé automatiquement vers la plateforme de paiement CinetPay.</p>
+  </div>
+
+  <div class="d-flex gap-2 flex-wrap mt-3">
+    <a href="{{ url_for('client.client_orders') }}" class="btn btn-outline-primary">Retour aux commandes</a>
+  </div>
+</div>
+
+<script>
+    // Auto-redirect to cinetpay_checkout
+    window.location.href = "{{ url_for('client.cinetpay_checkout', payment_id=payment.id) }}";
+</script>
+{% endblock %}
+

@@ -1,0 +1,40 @@
+{# Carte produit simplifiée et compacte pour grille 4 colonnes #}
+<article class="product-card-compact">
+  <div class="product-card-image">
+    {% if item.image_principale %}
+    <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" alt="{{ item.nom }}">
+    {% elif item.image %}
+    <img src="{{ url_for('static', filename='images/' ~ item.image) }}" alt="{{ item.nom }}">
+    {% else %}
+    <div class="product-image-placeholder">Sans image</div>
+    {% endif %}
+  </div>
+  <div class="product-card-content">
+    <h3>{{ item.nom }}</h3>
+    <div class="product-card-meta">
+      {% if item.vendeur %}
+      <div class="vendor-info">
+        <span class="vendor-avatar">
+          {% if item.vendeur.profile_photo %}
+          <img src="{{ url_for('static', filename='images/' ~ item.vendeur.profile_photo) }}" alt="{{ item.vendeur.nom }}">
+          {% else %}
+          {{ (item.vendeur.nom[:1] if item.vendeur.nom else 'V')|upper }}
+          {% endif %}
+        </span>
+        <span class="vendor-details">
+          <strong>{{ item.vendeur.nom }}</strong>
+          {% if item.vendeur.localisation %}<small>{{ item.vendeur.localisation }}</small>{% endif %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+    <div class="product-card-price">{{ item.prix }} $</div>
+    <div class="product-card-actions">
+      {% if action_template %}
+        {% include action_template %}
+      {% else %}
+      <button class="btn btn-sm btn-primary">Ajouter</button>
+      {% endif %}
+    </div>
+  </div>
+</article>

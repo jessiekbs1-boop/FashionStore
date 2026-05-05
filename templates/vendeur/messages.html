@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Messagerie vendeur{% endblock %}
+{% block content %}
+<section class="page-header">
+  <span class="section-tag">Messagerie</span>
+  <h2>Messages avec les clients</h2>
+  <p>Réponds rapidement aux questions sur les articles et commandes.</p>
+</section>
+
+<div class="messages-layout">
+  <aside class="messages-sidebar">
+    <h3>Clients</h3>
+    <ul>
+      {% for user in partenaires %}
+      <li>
+        <a href="{{ url_for('vendeur.messages_vendeur', partenaire_id=user.id) }}" class="{% if partenaire_selectionne and partenaire_selectionne.id == user.id %}active{% endif %}">
+          {{ user.nom }}
+          {% if unread_by_partner[user.id] > 0 %}
+          <span class="badge text-bg-danger">{{ unread_by_partner[user.id] }}</span>
+          {% endif %}
+        </a>
+      </li>
+      {% else %}
+      <li>Aucun client disponible.</li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <section class="messages-thread">
+    {% if partenaire_selectionne %}
+    <h3>Conversation avec {{ partenaire_selectionne.nom }}</h3>
+    <div class="message-list">
+      {% for msg in conversation %}
+      <article class="message-bubble {% if msg.expediteur_id == current_user.id %}outgoing{% else %}incoming{% endif %}">
+        <p>{{ msg.contenu }}</p>
+        <small>
+          {{ msg.date.strftime('%d/%m/%Y %H:%M') }}
+          {% if msg.expediteur_id == current_user.id %}
+          - {{ 'Lu' if msg.lu else 'Envoye' }}
+          {% elif not msg.lu %}
+          - Non lu
+          {% endif %}
+        </small>
+      </article>
+      {% else %}
+      <p>Aucun message pour le moment.</p>
+      {% endfor %}
+    </div>
+
+    <form method="POST" action="{{ url_for('vendeur.messages_vendeur') }}" class="message-form">
+      <input type="hidden" name="destinataire_id" value="{{ partenaire_selectionne.id }}">
+      <textarea name="contenu" rows="3" class="form-control" placeholder="Écris ton message..." required></textarea>
+      <button class="btn btn-primary" type="submit">Envoyer</button>
+    </form>
+    {% else %}
+    <div class="empty-state">
+      <i class="fa-regular fa-comments"></i>
+      <h3>Sélectionne un client</h3>
+      <p>Choisis un client à gauche pour consulter la discussion.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

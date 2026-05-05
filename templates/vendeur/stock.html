@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Stock Vendeur{% endblock %}
+{% block content %}
+<section class="page-header page-header-split">
+    <div>
+        <span class="section-tag">Inventaire</span>
+        <h2>Stock des produits</h2>
+        <p>Visualise rapidement les informations clés de tes articles.</p>
+    </div>
+    <a href="{{ url_for('vendeur.vendeur_dashboard') }}" class="btn btn-outline-primary">Retour au tableau de bord</a>
+</section>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Image</th>
+            <th>Nom</th>
+            <th>Prix</th>
+            <th>Stock</th>
+            <th>Catégorie</th>
+            <th>Taille</th>
+            <th>Marque</th>
+            <th>Localisation</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for produit in produits %}
+        <tr>
+            <td>
+                {% if produit.image_principale %}
+                <img src="{{ url_for('static', filename='images/' ~ produit.image_principale) }}" alt="{{ produit.nom }}" style="max-width: 70px; max-height: 70px; border-radius: 8px;">
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>{{ produit.nom }}</td>
+            <td>
+                {{ "%.2f"|format(produit.prix) }} $
+                {% if produit.ancien_prix %}
+                <br><small><s>{{ "%.2f"|format(produit.ancien_prix) }} $</s></small>
+                {% endif %}
+            </td>
+            <td>{{ produit.quantite }}</td>
+            <td>{{ produit.categorie or '-' }}</td>
+            <td>{{ produit.taille or '-' }}</td>
+            <td>{{ produit.marque or '-' }}</td>
+            <td>{{ produit.localisation or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="8" class="text-center">Aucun produit en stock.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

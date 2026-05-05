@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Messagerie{% endblock %}
+{% block content %}
+<h2>Messagerie interne</h2>
+<div class="row">
+  <div class="col-md-4">
+    <h4>Envoyer un message</h4>
+    <form method="POST" action="{{ url_for('messagerie') }}">
+      <div class="mb-3">
+        <label for="destinataire_id" class="form-label">Destinataire</label>
+        <select class="form-select" id="destinataire_id" name="destinataire_id" required>
+          {% for user in users %}
+          <option value="{{ user.id }}">{{ user.nom }} ({{ user.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="contenu" class="form-label">Message</label>
+        <textarea class="form-control" id="contenu" name="contenu" rows="3" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Envoyer</button>
+    </form>
+  </div>
+  <div class="col-md-8">
+    <h4>Messages reçus</h4>
+    <ul class="list-group mb-4">
+      {% for message in messages_reçus %}
+      <li class="list-group-item">
+        <strong>De :</strong> {{ message.expediteur.nom }} <br>
+        <small>{{ message.date.strftime('%d/%m/%Y %H:%M') }}</small>
+        <p>{{ message.contenu }}</p>
+      </li>
+      {% else %}
+      <li class="list-group-item">Aucun message reçu.</li>
+      {% endfor %}
+    </ul>
+    <h4>Messages envoyés</h4>
+    <ul class="list-group">
+      {% for message in messages_envoyés %}
+      <li class="list-group-item">
+        <strong>À :</strong> {{ message.destinataire.nom }} <br>
+        <small>{{ message.date.strftime('%d/%m/%Y %H:%M') }}</small>
+        <p>{{ message.contenu }}</p>
+      </li>
+      {% else %}
+      <li class="list-group-item">Aucun message envoyé.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

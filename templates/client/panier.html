@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Votre Panier{% endblock %}
+{% block content %}
+<section class="page-header page-header-split">
+  <div>
+    <span class="section-tag">Panier</span>
+    <h2>Votre panier</h2>
+    <p>Contrôle des quantités, résumé clair et passage en commande rapide.</p>
+  </div>
+  <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-primary">Continuer mes achats</a>
+</section>
+
+{% if products %}
+<div class="cart-layout">
+  <div class="cart-items">
+    {% for item in products %}
+    <article class="cart-item">
+      <div class="cart-item-main">
+        <h3>{{ item.produit.nom }}</h3>
+        <p>{{ item.produit.vendeur.nom }}</p>
+        <div class="cart-item-price">{{ item.produit.prix }} $ / unité</div>
+      </div>
+      <div class="cart-item-actions">
+        <form method="POST" action="{{ url_for('client.modifier_panier', product_id=item.produit.id) }}" class="cart-qty-form">
+          <input type="number" name="quantite" value="{{ item.quantite }}" min="1" class="form-control quantity-input">
+          <button type="submit" class="btn btn-primary btn-sm">Mettre à jour</button>
+        </form>
+        <div class="cart-item-total">Sous-total: {{ (item.produit.prix * item.quantite) | round(2) }} $</div>
+        <form method="POST" action="{{ url_for('client.supprimer_du_panier', product_id=item.produit.id) }}">
+          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <aside class="cart-summary">
+    <h3>Résumé</h3>
+    <div class="summary-line"><span>Total</span><strong>{{ total | round(2) }} $</strong></div>
+    <p>Vérifie les quantités avant de finaliser ta commande.</p>
+    <a href="{{ url_for('client.passer_commande') }}" class="btn btn-success btn-lg w-100">Passer la commande</a>
+  </aside>
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fa-solid fa-cart-shopping"></i>
+  <h3>Votre panier est vide</h3>
+  <p>Explore le catalogue et ajoute tes premiers articles.</p>
+  <a href="{{ url_for('client.voir_produits') }}" class="btn btn-primary">Voir les produits</a>
+</div>
+{% endif %}
+{% endblock %}
