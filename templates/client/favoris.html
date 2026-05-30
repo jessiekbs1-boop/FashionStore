@@ -10,7 +10,7 @@
 {% if favoris %}
 <div class="product-grid">
   {% for favori in favoris %}
-  <article class="product-card">
+  <article class="product-card product-clickable-card" role="link" tabindex="0" data-product-url="{{ url_for('client.detail_produit', product_id=favori.product.id) }}" onclick="window.location=this.dataset.productUrl;" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location=this.dataset.productUrl;}">
     <div class="product-image-wrap">
       {% if favori.product.image_principale %}
       <img src="{{ url_for('static', filename='images/' ~ favori.product.image_principale) }}" class="product-image" alt="{{ favori.product.nom }}">
@@ -26,8 +26,8 @@
       <h3>{{ favori.product.nom }}</h3>
       <p>{{ favori.product.description or 'Aucune description fournie.' }}</p>
       <div class="product-action">
-        <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-primary">Voir le catalogue</a>
-        <form method="POST" action="{{ url_for('client.toggle_favori', product_id=favori.product.id) }}">
+        <a href="{{ url_for('client.detail_produit', product_id=favori.product.id) }}" class="btn btn-outline-primary">Voir le détail</a>
+        <form method="POST" action="{{ url_for('client.toggle_favori', product_id=favori.product.id) }}" onclick="event.stopPropagation();">
           <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-heart-crack"></i> Retirer</button>
         </form>
       </div>

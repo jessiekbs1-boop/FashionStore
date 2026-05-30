@@ -26,10 +26,20 @@
   <div class="mb-3">
     <label for="categorie" class="form-label">Catégorie</label>
     <select class="form-select" id="categorie" name="categorie">
+      <option value="">Choisir une catégorie</option>
       <option value="homme">Homme</option>
       <option value="femme">Femme</option>
       <option value="enfant">Enfant</option>
+      <option value="chaussures">Chaussures</option>
+      <option value="accessoires">Accessoires</option>
     </select>
+  </div>
+  <div class="mb-3 d-none" id="subcategoryField">
+    <label for="sous_categorie" class="form-label">Sous-catégorie</label>
+    <select class="form-select" id="sous_categorie" name="sous_categorie">
+      <option value="">Choisir une sous-catégorie</option>
+    </select>
+    <div class="form-text" id="subcategoryHelp">Choisis une catégorie principale pour afficher les sous-catégories.</div>
   </div>
   <div class="mb-3">
     <label for="taille" class="form-label">Taille</label>
@@ -44,6 +54,26 @@
     </select>
   </div>
   <div class="mb-3">
+    <label for="tailles_disponibles" class="form-label">Tailles disponibles</label>
+    <input type="text" class="form-control" id="tailles_disponibles" name="tailles_disponibles" placeholder="Ex: XS, S, M, L">
+    <div class="form-text">Sépare les tailles par des virgules.</div>
+  </div>
+  <div class="mb-3">
+    <label for="couleurs" class="form-label">Couleurs disponibles</label>
+    <input type="text" class="form-control" id="couleurs" name="couleurs" placeholder="Ex: Noir, Blanc, Rouge">
+    <div class="form-text">Sépare les couleurs par des virgules. Les clients pourront choisir la couleur sur la fiche produit.</div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label for="delai_livraison_min" class="form-label">Délai de livraison minimum (jours)</label>
+      <input type="number" class="form-control" id="delai_livraison_min" name="delai_livraison_min" min="1">
+    </div>
+    <div class="col-md-6">
+      <label for="delai_livraison_max" class="form-label">Délai de livraison maximum (jours)</label>
+      <input type="number" class="form-control" id="delai_livraison_max" name="delai_livraison_max" min="1">
+    </div>
+  </div>
+  <div class="mb-3">
     <label for="marque" class="form-label">Marque</label>
     <input type="text" class="form-control" id="marque" name="marque" placeholder="Ex: Zara">
   </div>
@@ -54,11 +84,52 @@
   <div class="mb-3">
     <label for="image" class="form-label">Image principale</label>
     <input type="file" class="form-control" id="image" name="image" accept="image/*">
+    <div class="form-text">Cette image sera affichée en premier dans les listes clients.</div>
   </div>
   <div class="mb-3">
     <label for="images" class="form-label">Images supplémentaires</label>
     <input type="file" class="form-control" id="images" name="images" accept="image/*" multiple>
+    <div class="form-text">Ajoute ici les autres photos du produit. Elles seront visibles quand le client ouvrira la fiche produit.</div>
   </div>
   <button type="submit" class="btn btn-primary">Ajouter</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const categorySelect = document.getElementById('categorie');
+  const subcategoryField = document.getElementById('subcategoryField');
+  const subcategorySelect = document.getElementById('sous_categorie');
+  const subcategoryHelp = document.getElementById('subcategoryHelp');
+
+  const subcategories = {
+    chaussures: ['Babouches', 'Sandales', 'Basket', 'Bottes'],
+    accessoires: ['Bracelet', 'Montre', 'Bijoux', 'Sac dame', 'Sac à dos'],
+  };
+
+  const renderSubcategories = () => {
+    const selectedCategory = (categorySelect.value || '').toLowerCase();
+    const items = subcategories[selectedCategory] || [];
+
+    subcategorySelect.innerHTML = '<option value="">Choisir une sous-catégorie</option>';
+
+    if (items.length) {
+      items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item;
+        option.textContent = item;
+        subcategorySelect.appendChild(option);
+      });
+      subcategoryField.classList.remove('d-none');
+      subcategoryHelp.textContent = `Sous-catégories disponibles pour ${categorySelect.selectedOptions[0].textContent.toLowerCase()}.`;
+    } else {
+      subcategoryField.classList.add('d-none');
+      subcategorySelect.value = '';
+      subcategoryHelp.textContent = 'Choisis une catégorie principale pour afficher les sous-catégories.';
+    }
+  };
+
+  categorySelect.addEventListener('change', renderSubcategories);
+  renderSubcategories();
+});
+</script>
 {% endblock %}

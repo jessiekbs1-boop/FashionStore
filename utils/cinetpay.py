@@ -1,12 +1,11 @@
 import requests
 import hmac
 import hashlib
-import json
 
 class CinetPayAPI:
     """CinetPay API client for real payments."""
     
-    BASE_URL = "https://api.cinetpay.com"
+    BASE_URL = "https://api-checkout.cinetpay.com"
     
     def __init__(self, api_key, site_id):
         self.api_key = api_key
@@ -32,15 +31,14 @@ class CinetPayAPI:
         
         try:
             resp = requests.post(
-                f"{self.BASE_URL}/v1/payment/check",
+                f"{self.BASE_URL}/v2/payment",
                 json=payload,
                 timeout=10
             )
             resp.raise_for_status()
             data = resp.json()
-            # CinetPay returns a payment link in data['data']['payment_url']
-            if data.get('code') == '0':
-                return data.get('data', {}).get('payment_url')
+            if str(data.get('code')) in ('0', '201'):
+                return data.get('data', {}).get('payment_url') or data.get('data', {}).get('payment_url_redirect')
         except Exception as e:
             print(f"CinetPay error: {e}")
         
@@ -59,15 +57,17 @@ class CinetPayAPI:
         
         try:
             resp = requests.post(
-                f"{self.BASE_URL}/v1/payment/check",
+                f"{self.BASE_URL}/v2/payment/check",
                 json=payload,
                 timeout=10
             )
             resp.raise_for_status()
             data = resp.json()
-            # CinetPay returns status in data['data']['status']
-            # 'ACCEPTED' or 'PENDING' etc.
-            status = data.get('data', {}).get('status', '').lower()
+            status = (
+                data.get('data', {}).get('status')
+                or data.get('data', {}).get('payment_status')
+                or ''
+            ).lower()
             return status in ('accepted', 'confirmed')
         except Exception as e:
             print(f"CinetPay verify error: {e}")

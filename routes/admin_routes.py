@@ -10,11 +10,17 @@ admin_bp = Blueprint('admin', __name__)
 def admin_home():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    users = User.query.all()
-    products = Product.query.all()
-    orders = Order.query.all()
+    if current_user.shop_id:
+        users = User.query.filter_by(shop_id=current_user.shop_id).all()
+        products = Product.query.filter_by(shop_id=current_user.shop_id).all()
+        orders = Order.query.filter_by(shop_id=current_user.shop_id).all()
+        produits = Product.query.filter_by(shop_id=current_user.shop_id).order_by(Product.created_at.desc()).all()
+    else:
+        users = User.query.all()
+        products = Product.query.all()
+        orders = Order.query.all()
+        produits = Product.query.order_by(Product.created_at.desc()).all()
     # Get all products for dashboard display
-    produits = Product.query.order_by(Product.created_at.desc()).all()
     return render_template('admin/dashboard.html', users=users, products=products, orders=orders, produits=produits)
 
 @admin_bp.route('/admin/gestion_paiements')
@@ -22,7 +28,10 @@ def admin_home():
 def gestion_paiements():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    payments = Payment.query.order_by(Payment.date.desc()).all()
+    payments_query = Payment.query
+    if current_user.shop_id:
+        payments_query = payments_query.filter_by(shop_id=current_user.shop_id)
+    payments = payments_query.order_by(Payment.date.desc()).all()
     return render_template('admin/gestion_paiements.html', payments=payments)
 
 @admin_bp.route('/admin/utilisateurs')
@@ -30,7 +39,10 @@ def gestion_paiements():
 def gestion_utilisateurs():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    users = User.query.all()
+    users_query = User.query
+    if current_user.shop_id:
+        users_query = users_query.filter_by(shop_id=current_user.shop_id)
+    users = users_query.all()
     return render_template('admin/gestion_utilisateurs.html', users=users)
 
 @admin_bp.route('/admin/utilisateur/desactiver/<int:user_id>', methods=['POST'])
@@ -39,6 +51,9 @@ def desactiver_utilisateur(user_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     user = User.query.get_or_404(user_id)
+    if current_user.shop_id and user.shop_id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_utilisateurs'))
     user.actif = False
     db.session.commit()
     flash('Utilisateur desactive.')
@@ -50,6 +65,9 @@ def supprimer_utilisateur(user_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     user = User.query.get_or_404(user_id)
+    if current_user.shop_id and user.shop_id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_utilisateurs'))
     # Delete related products and orders to avoid foreign key constraint errors
     for product in user.products:
         # Delete order_items related to product
@@ -74,7 +92,10 @@ def supprimer_utilisateur(user_id):
 def gestion_produits_admin():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    products = Product.query.all()
+    products_query = Product.query
+    if current_user.shop_id:
+        products_query = products_query.filter_by(shop_id=current_user.shop_id)
+    products = products_query.all()
     return render_template('admin/gestion_produits.html', products=products)
 
 @admin_bp.route('/admin/produit/supprimer/<int:product_id>', methods=['POST'])
@@ -83,6 +104,9 @@ def supprimer_produit_admin(product_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     produit = Product.query.get_or_404(product_id)
+    if current_user.shop_id and produit.shop_id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_produits_admin'))
     # Delete related order_items first to avoid foreign key constraint error
     order_items = produit.order_items
     for item in order_items:
@@ -97,7 +121,10 @@ def supprimer_produit_admin(product_id):
 def gestion_commandes():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    orders = Order.query.all()
+    orders_query = Order.query
+    if current_user.shop_id:
+        orders_query = orders_query.filter_by(shop_id=current_user.shop_id)
+    orders = orders_query.all()
     return render_template('admin/gestion_commandes.html', orders=orders)
 
 
@@ -106,7 +133,10 @@ def gestion_commandes():
 def gestion_boutiques():
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
-    shops = Shop.query.order_by(Shop.created_at.desc()).all()
+    shops_query = Shop.query
+    if current_user.shop_id:
+        shops_query = shops_query.filter_by(id=current_user.shop_id)
+    shops = shops_query.order_by(Shop.created_at.desc()).all()
     return render_template('admin/gestion_boutiques.html', shops=shops)
 
 
@@ -142,6 +172,9 @@ def modifier_boutique(shop_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     shop = Shop.query.get_or_404(shop_id)
+    if current_user.shop_id and shop.id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_boutiques'))
     if request.method == 'POST':
         shop.nom = request.form.get('nom')
         shop.address = request.form.get('address')
@@ -168,6 +201,9 @@ def supprimer_boutique(shop_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     shop = Shop.query.get_or_404(shop_id)
+    if current_user.shop_id and shop.id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_boutiques'))
     # optionally detach products
     for p in shop.products:
         p.shop_id = None
@@ -182,6 +218,9 @@ def supprimer_commande_admin(order_id):
     if current_user.role != 'admin':
         return redirect(url_for('auth.login'))
     order = Order.query.get_or_404(order_id)
+    if current_user.shop_id and order.shop_id != current_user.shop_id:
+        flash('Acces refuse.', 'danger')
+        return redirect(url_for('admin.gestion_commandes'))
     # Delete related order_items
     for item in order.items:
         db.session.delete(item)

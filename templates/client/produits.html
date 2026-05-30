@@ -1,99 +1,208 @@
 {% extends "base.html" %}
-{% block title %}Produits{% endblock %}
+{% block title %}Catégories - Store Fashion{% endblock %}
 {% block content %}
-<section class="page-header page-header-split">
-  <div>
-    <span class="section-tag">Catalogue</span>
-    <h2>Produits disponibles</h2>
-    <p>Recherche rapide, cartes lisibles et ajout au panier simplifié.</p>
+
+<!-- TOP SEARCH BAR -->
+<div class="categories-header">
+  <div class="search-section">
+    <form method="GET" action="{{ url_for('client.voir_produits') }}" class="search-form">
+      <div class="search-wrapper">
+        <i class="fa-solid fa-envelope search-icon-left"></i>
+        <input type="search" name="q" value="{{ query or '' }}" placeholder="Black Top" class="search-input">
+        <div class="search-icons">
+          <i class="fa-solid fa-camera"></i>
+          <i class="fa-regular fa-heart"></i>
+        </div>
+      </div>
+    </form>
   </div>
-  <form class="search-bar" method="GET" action="{{ url_for('client.voir_produits') }}">
-    <input type="search" name="q" value="{{ query or '' }}" placeholder="Rechercher un vêtement, une description...">
-    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Rechercher</button>
-  </form>
-</section>
 
-<form class="filters-grid" method="GET" action="{{ url_for('client.voir_produits') }}">
-  <input type="hidden" name="q" value="{{ query or '' }}">
-  <select name="categorie" class="form-select">
-    <option value="">Toutes catégories</option>
-    {% for c in categories %}
-    <option value="{{ c }}" {% if categorie == c %}selected{% endif %}>{{ c|capitalize }}</option>
-    {% endfor %}
-  </select>
-  <select name="taille" class="form-select">
-    <option value="">Toutes tailles</option>
-    {% for t in tailles %}
-    <option value="{{ t }}" {% if taille == t %}selected{% endif %}>{{ t }}</option>
-    {% endfor %}
-  </select>
-  <input type="text" name="marque" class="form-control" placeholder="Marque" value="{{ marque or '' }}">
-  <input type="text" name="localisation" class="form-control" placeholder="Localisation" value="{{ localisation or '' }}">
-  <input type="number" step="0.01" name="min_prix" class="form-control" placeholder="Prix min" value="{{ min_prix if min_prix is not none else '' }}">
-  <input type="number" step="0.01" name="max_prix" class="form-control" placeholder="Prix max" value="{{ max_prix if max_prix is not none else '' }}">
-  <button type="submit" class="btn btn-outline-primary">Appliquer les filtres</button>
-</form>
+  <!-- CATEGORY TABS -->
+  <div class="category-tabs-h">
+    <a href="{{ url_for('client.voir_produits', q=query) }}" class="tab-item {% if not categorie %}active{% endif %}">All</a>
+    <a href="{{ url_for('client.voir_produits', q=query, categorie='femme') }}" class="tab-item {% if categorie == 'femme' %}active{% endif %}">Femme</a>
+    <a href="{{ url_for('client.voir_produits', q=query, categorie='accessoires') }}" class="tab-item {% if categorie == 'accessoires' %}active{% endif %}">Accessoires</a>
+    <a href="{{ url_for('client.voir_produits', q=query, categorie='homme') }}" class="tab-item {% if categorie == 'homme' %}active{% endif %}">Homme</a>
+    <a href="{{ url_for('client.voir_produits', q=query, categorie='enfant') }}" class="tab-item {% if categorie == 'enfant' %}active{% endif %}">Enfant</a>
+    <a href="{{ url_for('client.voir_produits', q=query, categorie='chaussures') }}" class="tab-item {% if categorie == 'chaussures' %}active{% endif %}">Chaussures</a>
+  </div>
 
-{% if products %}
-<div class="product-grid-compact">
-  {% for item in products %}
-  <article class="product-card-compact">
-    <div class="product-image-wrap">
-      {% if item.image %}
-      <img src="{{ url_for('static', filename='images/' ~ item.image) }}" class="product-image" alt="{{ item.nom }}">
-      {% else %}
-      <div class="product-image-placeholder">Sans image</div>
-      {% endif %}
+  {% if subcategories %}
+  <div class="subcategory-tabs-h">
+    <a href="{{ url_for('client.voir_produits', q=query, categorie=categorie) }}" class="subtab-item {% if not sous_categorie %}active{% endif %}">Tous</a>
+    {% for item in subcategories %}
+    <a href="{{ url_for('client.voir_produits', q=query, categorie=categorie, sous_categorie=item) }}" class="subtab-item {% if sous_categorie == item %}active{% endif %}">{{ item|title }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- MAIN CONTENT WITH SIDEBAR -->
+<div class="categories-container">
+  <!-- LEFT SIDEBAR FILTERS -->
+  <aside class="sidebar-filters">
+    <button class="sidebar-toggle d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar">
+      <i class="fa-solid fa-sliders"></i> Filtres
+    </button>
+    
+    <div class="offcanvas offcanvas-start d-lg-block" id="filterSidebar">
+      <div class="offcanvas-header d-lg-none">
+        <h5 class="offcanvas-title">Filtres</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <nav class="filter-menu">
+          {% set shoe_subcategories = ['babouches', 'sandales', 'basket', 'bottes'] %}
+          {% set accessory_subcategories = ['bracelet', 'montre', 'bijoux', 'sac dame', 'sac à dos'] %}
+
+          <a href="#" class="filter-item active">
+            <span>Just for You</span>
+          </a>
+          <a href="?sort=new" class="filter-item">
+            <span>New In</span>
+          </a>
+          <a href="?sort=sale" class="filter-item">
+            <span>Sale</span>
+          </a>
+          
+          <div class="filter-category">
+            <h6>FEMME</h6>
+            <a href="?categorie=women" class="filter-item">Women Clothing</a>
+            <a href="?categorie=women&type=beachwear" class="filter-item">Beachwear</a>
+            <a href="?categorie=women&type=shoes" class="filter-item">Shoes</a>
+            <a href="?categorie=women&type=accessories" class="filter-item">Jewelry & Accessories</a>
+          </div>
+
+          <div class="filter-category">
+            <h6>HOMME</h6>
+            <a href="?categorie=men" class="filter-item">Men Clothing</a>
+          </div>
+
+          <div class="filter-category">
+            <h6>ENFANTS</h6>
+            <a href="?categorie=kids" class="filter-item">Kids</a>
+          </div>
+
+          <div class="filter-category">
+            <h6>MAISON</h6>
+            <a href="?categorie=home" class="filter-item">Home & Living</a>
+          </div>
+
+          <div class="filter-category">
+            <h6>AUTRES</h6>
+            <a href="?type=underwear" class="filter-item">Underwear & Sleepwear</a>
+            <a href="?categorie=curve" class="filter-item">Curve</a>
+            <a href="?type=beauty" class="filter-item">Beauty & Health</a>
+            <a href="?type=sports" class="filter-item">Sports & Outdoors</a>
+            <a href="?type=baby" class="filter-item">Baby & Maternity</a>
+            <a href="?type=bags" class="filter-item">Bags & Luggage</a>
+            <a href="?type=electronics" class="filter-item">Cell Phones & Accessories</a>
+            <a href="?type=textiles" class="filter-item">Home Textiles</a>
+          </div>
+
+          <details class="filter-category filter-category-collapsible" {% if categorie == 'chaussures' %}open{% endif %}>
+            <summary class="filter-category-summary">Chaussures <i class="fa-solid fa-chevron-down"></i></summary>
+            <div class="filter-category-body">
+              {% for item in shoe_subcategories %}
+              <a href="{{ url_for('client.voir_produits', q=query, categorie='chaussures', sous_categorie=item) }}" class="filter-item {% if categorie == 'chaussures' and sous_categorie == item %}active{% endif %}">{{ item|title }}</a>
+              {% endfor %}
+            </div>
+          </details>
+
+          <details class="filter-category filter-category-collapsible" {% if categorie == 'accessoires' %}open{% endif %}>
+            <summary class="filter-category-summary">Accessoires <i class="fa-solid fa-chevron-down"></i></summary>
+            <div class="filter-category-body">
+              {% for item in accessory_subcategories %}
+              <a href="{{ url_for('client.voir_produits', q=query, categorie='accessoires', sous_categorie=item) }}" class="filter-item {% if categorie == 'accessoires' and sous_categorie == item %}active{% endif %}">{{ item|title }}</a>
+              {% endfor %}
+            </div>
+          </details>
+        </nav>
+      </div>
     </div>
-    <div class="product-body-compact">
-      <h3>{{ item.nom }}</h3>
-      <div class="vendor-info-compact">
-        <span class="vendor-avatar-small">
-          {% if item.vendeur.profile_photo %}
-          <img src="{{ url_for('static', filename='images/' ~ item.vendeur.profile_photo) }}" alt="{{ item.vendeur.nom }}">
+  </aside>
+
+  <!-- MAIN PRODUCTS AREA -->
+  <main class="products-main">
+    <!-- SECTION HEADERS -->
+    <div class="section-header">
+      <h3>Just for You</h3>
+      <span class="section-caption">Picks for You</span>
+    </div>
+
+    <!-- PRODUCTS GRID -->
+    {% if products %}
+    <div class="categories-grid">
+      {% for item in products %}
+      <article class="category-card product-clickable-card" role="link" tabindex="0" data-product-url="{{ url_for('client.detail_produit', product_id=item.id) }}" onclick="window.location=this.dataset.productUrl;" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location=this.dataset.productUrl;}">
+        <div class="category-image">
+          {% if item.image_principale %}
+          <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" alt="{{ item.nom }}">
           {% else %}
-          {{ (item.vendeur.nom[:1] if item.vendeur.nom else 'V')|upper }}
+          <div class="image-placeholder">
+            <i class="fa-solid fa-shirt"></i>
+          </div>
           {% endif %}
-        </span>
-        <span class="vendor-text">
-          <strong>{{ item.vendeur.nom }}</strong>
-        </span>
-      </div>
-      <div class="price-big">{{ item.prix }} $</div>
-      <div class="product-action-compact">
-        <form method="POST" action="{{ url_for('client.ajouter_au_panier', product_id=item.id) }}">
-          <button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
-        </form>
-        <form method="POST" action="{{ url_for('client.toggle_favori', product_id=item.id) }}">
-          <button type="submit" class="btn btn-outline-primary btn-sm">
-            {% if item.id in favoris_ids %}
-            <i class="fa-solid fa-heart"></i>
-            {% else %}
-            <i class="fa-regular fa-heart"></i>
-            {% endif %}
-          </button>
-        </form>
-      </div>
+        </div>
+        <div class="category-info">
+          <h4>{{ item.nom[:25] }}</h4>
+          {% if item.vendeur %}
+          <p class="vendor-name">{{ item.vendeur.nom }}</p>
+          {% endif %}
+          <div class="product-card-hint">Voir les couleurs, tailles et la livraison</div>
+        </div>
+      </article>
+      {% endfor %}
     </div>
-  </article>
-  {% endfor %}
+
+    <!-- PAGINATION -->
+    <nav aria-label="Pagination" class="pagination-wrap mt-5">
+      <ul class="pagination justify-content-center">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('client.voir_produits', page=pagination.prev_num if pagination.has_prev else 1, q=query, categorie=categorie, sous_categorie=sous_categorie) }}">Précédent</a>
+        </li>
+        <li class="page-item disabled">
+          <span class="page-link">Page {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}</span>
+        </li>
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('client.voir_produits', page=pagination.next_num if pagination.has_next else 1, q=query, categorie=categorie, sous_categorie=sous_categorie) }}">Suivant</a>
+        </li>
+      </ul>
+    </nav>
+    {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-box-open"></i>
+      <h3>Aucun produit trouvé</h3>
+      <p>Essaie une autre recherche ou reviens plus tard.</p>
+    </div>
+    {% endif %}
+  </main>
 </div>
-<nav aria-label="Pagination des produits" class="pagination-wrap">
-  <ul class="pagination justify-content-center mt-4">
-    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('client.voir_produits', page=pagination.prev_num, q=query, categorie=categorie, taille=taille, marque=marque, localisation=localisation, min_prix=min_prix, max_prix=max_prix) }}">Précédent</a>
-    </li>
-    <li class="page-item disabled"><span class="page-link">Page {{ pagination.page }} / {{ pagination.pages if pagination.pages else 1 }}</span></li>
-    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('client.voir_produits', page=pagination.next_num, q=query, categorie=categorie, taille=taille, marque=marque, localisation=localisation, min_prix=min_prix, max_prix=max_prix) }}">Suivant</a>
-    </li>
-  </ul>
-</nav>
-{% else %}
-<div class="empty-state">
-  <i class="fa-solid fa-box-open"></i>
-  <h3>Aucun produit trouvé</h3>
-  <p>Essaie une autre recherche ou reviens plus tard.</p>
-</div>
-{% endif %}
+
+<style>
+.subcategory-tabs-h {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.9rem 0 0;
+}
+
+.subtab-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.subtab-item.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+</style>
+
 {% endblock %}

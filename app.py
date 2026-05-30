@@ -23,6 +23,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images')
 app.config['CINETPAY_API_KEY'] = os.getenv('CINETPAY_API_KEY', '')
 app.config['CINETPAY_SITE_ID'] = os.getenv('CINETPAY_SITE_ID', '')
+app.config['CINETPAY_WEBHOOK_SECRET'] = os.getenv('CINETPAY_WEBHOOK_SECRET', os.getenv('CINETPAY_API_KEY', ''))
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -39,6 +40,15 @@ def load_user(user_id):
 @app.context_processor
 def inject_notifications():
     from flask_login import current_user
+
+    def cart_quantity(entry):
+        if isinstance(entry, dict):
+            return int(entry.get('quantite', 0) or 0)
+        try:
+            return int(entry)
+        except (TypeError, ValueError):
+            return 0
+
     if not current_user.is_authenticated:
         return {
             'unread_message_count': 0,
@@ -54,7 +64,7 @@ def inject_notifications():
     cart_item_count = 0
     if current_user.role == 'client':
         panier = session.get('panier', {})
-        cart_item_count = sum(int(quantite) for quantite in panier.values())
+        cart_item_count = sum(cart_quantity(quantite) for quantite in panier.values())
 
     new_order_count = 0
     if current_user.role == 'client':
@@ -138,6 +148,24 @@ def ensure_database_ready():
                 if col not in cols:
                     db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN {col} INTEGER'))
                     db.session.commit()
+
+        if 'products' in inspector.get_table_names():
+            product_cols = {c['name'] for c in inspector.get_columns('products')}
+            if 'sous_categorie' not in product_cols:
+                db.session.execute(text("ALTER TABLE products ADD COLUMN sous_categorie VARCHAR(80)"))
+                db.session.commit()
+            if 'tailles_disponibles' not in product_cols:
+                db.session.execute(text("ALTER TABLE products ADD COLUMN tailles_disponibles VARCHAR(255)"))
+                db.session.commit()
+            if 'couleurs' not in product_cols:
+                db.session.execute(text("ALTER TABLE products ADD COLUMN couleurs VARCHAR(255)"))
+                db.session.commit()
+            if 'delai_livraison_min' not in product_cols:
+                db.session.execute(text("ALTER TABLE products ADD COLUMN delai_livraison_min INTEGER"))
+                db.session.commit()
+            if 'delai_livraison_max' not in product_cols:
+                db.session.execute(text("ALTER TABLE products ADD COLUMN delai_livraison_max INTEGER"))
+                db.session.commit()
         # Ensure shops fields exist
         if 'shops' in inspector.get_table_names():
             shop_cols = {c['name'] for c in inspector.get_columns('shops')}
@@ -167,6 +195,16 @@ def ensure_database_ready():
                 db.session.commit()
             if 'date_livraison' not in order_cols:
                 db.session.execute(text("ALTER TABLE orders ADD COLUMN date_livraison DATETIME"))
+                db.session.commit()
+
+        # Ensure payment_events table exists and has expected columns
+        if 'payment_events' not in inspector.get_table_names():
+            db.create_all()
+            inspector = inspect(db.engine)
+        if 'payment_events' in inspector.get_table_names():
+            event_cols = {c['name'] for c in inspector.get_columns('payment_events')}
+            if 'source' not in event_cols:
+                db.session.execute(text("ALTER TABLE payment_events ADD COLUMN source VARCHAR(50) DEFAULT 'system'"))
                 db.session.commit()
 
 ensure_database_ready()

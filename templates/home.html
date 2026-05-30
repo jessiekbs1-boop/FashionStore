@@ -1,74 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Store Fashion - Accueil{% endblock %}
 {% block content %}
-<section class="hero-banner">
-  <div class="hero-copy">
-    <span class="hero-kicker">Plateforme de vente de vêtements</span>
-    <h1>Vends, achète et gère tes articles mode avec une interface claire et moderne.</h1>
-    <p>Store Fashion centralise les vendeurs, les clients, les commandes et les paiements dans une expérience simple, responsive et professionnelle.</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}">Se connecter</a>
-      <a class="btn btn-outline-light btn-lg" href="{{ url_for('auth.register') }}">Créer un compte</a>
-    </div>
-    <div class="hero-stats">
-      <div><strong>3 rôles</strong><span>client, vendeur, admin</span></div>
-      <div><strong>Mobile first</strong><span>adapté aux petits écrans</span></div>
-      <div><strong>Simple</strong><span>navigation rapide</span></div>
-    </div>
-  </div>
-  <div class="hero-card">
-    <div class="hero-card-top">
-      <span class="badge-soft">E-commerce mode</span>
-      <i class="fa-solid fa-bag-shopping"></i>
-    </div>
-    <div class="hero-card-grid">
-      <article>
-        <h3>Achat rapides</h3>
-        <p>Ajout au panier, commandes et paiements en quelques clics.</p>
-      </article>
-      <article>
-        <h3>Ventes rapides</h3>
-        <p>Produits, stock et commandes visibles au même endroit.</p>
-      </article>
-      <article>
-        <h3>Messagerie</h3>
-        <p>Une conversation simple entre acheteurs et vendeurs.</p>
-      </article>
-      <article>
-        <h3>Favoris</h3>
-        <p>Les utilisateurs peuvent sauvegarder leurs articles préférés.</p>
-      </article>
-    </div>
-  </div>
-</section>
+<section class="landing-shell">
+  <div class="landing-hero">
+    <h1>Bienvenue sur <span>Store Fashion</span></h1>
+    <p>Découvrez les meilleurs produits africains. Achetez en confiance avec paiement sécurisé via CinetPay.</p>
 
-<section class="feature-strip">
-  <div class="feature-item">
-    <i class="fa-solid fa-shirt"></i>
-    <div>
-      <strong>Catalogue visuel</strong>
-      <span>Produits en cartes responsives</span>
+    <div class="landing-actions">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg landing-primary-btn">
+        Connexion <i class="fa-solid fa-arrow-right-long"></i>
+      </a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg landing-secondary-btn">
+        Inscription
+      </a>
     </div>
   </div>
-  <div class="feature-item">
-    <i class="fa-solid fa-lock"></i>
-    <div>
-      <strong>Sécurité de base</strong>
-      <span>Mots de passe hashés et rôles</span>
-    </div>
-  </div>
-  <div class="feature-item">
-    <i class="fa-solid fa-bolt"></i>
-    <div>
-      <strong>Mobile friendly</strong>
-      <span>Interface adaptée au téléphone et au PC</span>
-    </div>
-  </div>
-</section>
 
-<section class="page-header" style="margin-top: 1.5rem;">
-  <span class="section-tag">Fonctionnalités</span>
-  <h2>Une base sérieuse pour évoluer</h2>
-  <p>Cette plateforme est pensée pour être enrichie progressivement sans casser l’existant.</p>
+  <section class="home-benefits">
+    <h2>Pourquoi choisir Store Fashion ?</h2>
+    <div class="home-benefits-grid">
+      <article class="home-benefit-card">
+        <div class="home-benefit-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>Paiement sécurisé</h3>
+        <p>Transactions protégées via CinetPay avec un parcours simple et rassurant.</p>
+      </article>
+
+      <article class="home-benefit-card">
+        <div class="home-benefit-icon"><i class="fa-solid fa-user-group"></i></div>
+        <h3>Vendeurs vérifiés</h3>
+        <p>Des vendeurs sélectionnés pour garder une expérience fiable et claire.</p>
+      </article>
+
+      <article class="home-benefit-card">
+        <div class="home-benefit-icon"><i class="fa-solid fa-truck-fast"></i></div>
+        <h3>Livraison rapide</h3>
+        <p>Une livraison pensée pour être simple et suivie en toute transparence.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-seller-cta">
+    <div class="home-seller-cta-inner">
+      <h2>Prêt à vendre ?</h2>
+      <p>Rejoignez des milliers de vendeurs qui font confiance à Store Fashion.</p>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg home-seller-btn">
+        Créer votre boutique <i class="fa-solid fa-arrow-right-long"></i>
+      </a>
+    </div>
+  </section>
 </section>
 {% endblock %}

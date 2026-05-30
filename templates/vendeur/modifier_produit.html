@@ -26,10 +26,31 @@
   <div class="mb-3">
     <label for="categorie" class="form-label">Catégorie</label>
     <select class="form-select" id="categorie" name="categorie">
+      <option value="" {% if not produit.categorie %}selected{% endif %}>Choisir une catégorie</option>
       <option value="homme" {% if produit.categorie == 'homme' %}selected{% endif %}>Homme</option>
       <option value="femme" {% if produit.categorie == 'femme' %}selected{% endif %}>Femme</option>
       <option value="enfant" {% if produit.categorie == 'enfant' %}selected{% endif %}>Enfant</option>
+      <option value="chaussures" {% if produit.categorie == 'chaussures' %}selected{% endif %}>Chaussures</option>
+      <option value="accessoires" {% if produit.categorie == 'accessoires' %}selected{% endif %}>Accessoires</option>
     </select>
+  </div>
+  <div class="mb-3 {% if produit.categorie not in ['chaussures', 'accessoires'] %}d-none{% endif %}" id="subcategoryField">
+    <label for="sous_categorie" class="form-label">Sous-catégorie</label>
+    <select class="form-select" id="sous_categorie" name="sous_categorie">
+      <option value="">Choisir une sous-catégorie</option>
+      {% set shoe_subcategories = ['Babouches', 'Sandales', 'Basket', 'Bottes'] %}
+      {% set accessory_subcategories = ['Bracelet', 'Montre', 'Bijoux', 'Sac dame', 'Sac à dos'] %}
+      {% if produit.categorie == 'chaussures' %}
+        {% for item in shoe_subcategories %}
+        <option value="{{ item }}" {% if produit.sous_categorie == item|lower %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      {% elif produit.categorie == 'accessoires' %}
+        {% for item in accessory_subcategories %}
+        <option value="{{ item }}" {% if produit.sous_categorie == item|lower %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      {% endif %}
+    </select>
+    <div class="form-text" id="subcategoryHelp">Les sous-catégories varient selon la catégorie principale choisie.</div>
   </div>
   <div class="mb-3">
     <label for="taille" class="form-label">Taille</label>
@@ -41,6 +62,26 @@
       <option value="L" {% if produit.taille == 'L' %}selected{% endif %}>L</option>
       <option value="XL" {% if produit.taille == 'XL' %}selected{% endif %}>XL</option>
     </select>
+  </div>
+  <div class="mb-3">
+    <label for="tailles_disponibles" class="form-label">Tailles disponibles</label>
+    <input type="text" class="form-control" id="tailles_disponibles" name="tailles_disponibles" value="{{ produit.tailles_disponibles or produit.taille or '' }}" placeholder="Ex: XS, S, M, L">
+    <div class="form-text">Sépare les tailles par des virgules.</div>
+  </div>
+  <div class="mb-3">
+    <label for="couleurs" class="form-label">Couleurs disponibles</label>
+    <input type="text" class="form-control" id="couleurs" name="couleurs" value="{{ produit.couleurs or '' }}" placeholder="Ex: Noir, Blanc, Rouge">
+    <div class="form-text">Sépare les couleurs par des virgules. Les clients pourront les choisir sur la fiche produit.</div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label for="delai_livraison_min" class="form-label">Délai de livraison minimum (jours)</label>
+      <input type="number" class="form-control" id="delai_livraison_min" name="delai_livraison_min" min="1" value="{{ produit.delai_livraison_min or '' }}">
+    </div>
+    <div class="col-md-6">
+      <label for="delai_livraison_max" class="form-label">Délai de livraison maximum (jours)</label>
+      <input type="number" class="form-control" id="delai_livraison_max" name="delai_livraison_max" min="1" value="{{ produit.delai_livraison_max or '' }}">
+    </div>
   </div>
   <div class="mb-3">
     <label for="marque" class="form-label">Marque</label>
@@ -56,11 +97,53 @@
     <img src="{{ url_for('static', filename='images/' ~ produit.image_principale) }}" alt="{{ produit.nom }}" style="max-height: 100px; display: block; margin-bottom: 8px;">
     {% endif %}
     <input type="file" class="form-control" id="image" name="image" accept="image/*">
+    <div class="form-text">Cette image reste l'image principale utilisée dans les cartes clients.</div>
   </div>
   <div class="mb-3">
     <label for="images" class="form-label">Ajouter des images supplémentaires</label>
     <input type="file" class="form-control" id="images" name="images" accept="image/*" multiple>
+    <div class="form-text">Ces images s'afficheront dans la galerie quand le client ouvrira le produit.</div>
   </div>
   <button type="submit" class="btn btn-primary">Modifier</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const categorySelect = document.getElementById('categorie');
+  const subcategoryField = document.getElementById('subcategoryField');
+  const subcategorySelect = document.getElementById('sous_categorie');
+
+  const subcategories = {
+    chaussures: ['Babouches', 'Sandales', 'Basket', 'Bottes'],
+    accessoires: ['Bracelet', 'Montre', 'Bijoux', 'Sac dame', 'Sac à dos'],
+  };
+
+  const renderSubcategories = () => {
+    const selectedCategory = (categorySelect.value || '').toLowerCase();
+    const items = subcategories[selectedCategory] || [];
+    const currentValue = subcategorySelect.value;
+
+    subcategorySelect.innerHTML = '<option value="">Choisir une sous-catégorie</option>';
+
+    if (items.length) {
+      items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item;
+        option.textContent = item;
+        if ((currentValue || '').toLowerCase() === item.toLowerCase()) {
+          option.selected = true;
+        }
+        subcategorySelect.appendChild(option);
+      });
+      subcategoryField.classList.remove('d-none');
+    } else {
+      subcategoryField.classList.add('d-none');
+      subcategorySelect.value = '';
+    }
+  };
+
+  categorySelect.addEventListener('change', renderSubcategories);
+  renderSubcategories();
+});
+</script>
 {% endblock %}

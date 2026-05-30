@@ -1,16 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Connexion{% endblock %}
 {% block content %}
-<h2>Connexion</h2>
-<form method="POST" action="{{ url_for('auth.login') }}">
-  <div class="mb-3">
-    <label for="email" class="form-label">Email</label>
-    <input type="email" class="form-control" id="email" name="email" required>
+<section class="auth-shell">
+  <div class="auth-card">
+    <div class="social-login-stack">
+      <a href="{{ url_for('auth.oauth_start', provider='google') }}" class="social-login-btn social-google" aria-label="Continuer avec Google">
+        <span class="social-icon google-icon">G</span>
+        <span>Continuer avec Google</span>
+      </a>
+      <a href="{{ url_for('auth.oauth_start', provider='apple') }}" class="social-login-btn social-apple" aria-label="Continuer avec Apple">
+        <i class="fa-brands fa-apple"></i>
+        <span>Continuez avec Apple</span>
+      </a>
+    </div>
+
+    <div class="auth-divider">
+      <span>ou</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control form-control-lg" id="email" name="email" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Mot de passe</label>
+        <input type="password" class="form-control form-control-lg" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-success btn-lg w-100">Se connecter</button>
+    </form>
+
+    <p class="auth-footer-note">Vous découvrez FashionStore ? <a href="{{ url_for('auth.register') }}">Créez un compte.</a></p>
   </div>
-  <div class="mb-3">
-    <label for="password" class="form-label">Mot de passe</label>
-    <input type="password" class="form-control" id="password" name="password" required>
-  </div>
-  <button type="submit" class="btn btn-primary">Se connecter</button>
-</form>
+</section>
 {% endblock %}

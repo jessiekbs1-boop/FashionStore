@@ -1,65 +1,171 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord Client{% endblock %}
+{% block title %}Accueil - Store Fashion{% endblock %}
 {% block content %}
-<section class="page-header page-header-split">
-  <div>
-    <span class="section-tag">Accueil client</span>
-    <h2>Bienvenue, {{ current_user.nom }}</h2>
-    <p>Voici les derniers produits publiés sur Store Fashion.</p>
-  </div>
-  <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-primary">Voir tout le catalogue</a>
-</section>
 
-{% if produits %}
-<div class="product-grid-compact">
-  {% for item in produits %}
-  <article class="product-card-compact">
-    <div class="product-image-wrap">
-      {% if item.image_principale %}
-      <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" class="product-image" alt="{{ item.nom }}">
+<div class="dashboard-layout">
+  <section class="dashboard-hero-card">
+    <div class="dashboard-hero-copy">
+      <span class="section-tag">Accueil client</span>
+      <h1>Nouveautés</h1>
+      <p>Une présentation simple pour retrouver vite les produits disponibles, vos favoris et votre panier.</p>
+      <div class="dashboard-hero-actions">
+        <a href="{{ url_for('client.voir_produits') }}" class="btn btn-primary">Voir le catalogue</a>
+        <a href="{{ url_for('client.voir_panier') }}" class="btn btn-outline-primary">Ouvrir le panier</a>
+      </div>
+    </div>
+    <div class="dashboard-hero-preview">
+      {% if produits and produits[0].image_principale %}
+      <img src="{{ url_for('static', filename='images/' ~ produits[0].image_principale) }}" alt="Produit vedette">
       {% else %}
-      <div class="product-image-placeholder">Sans image</div>
+      <div class="dashboard-preview-placeholder">
+        <i class="fa-solid fa-shirt"></i>
+      </div>
       {% endif %}
     </div>
-    <div class="product-body-compact">
-      <h3>{{ item.nom }}</h3>
-      <div class="vendor-info-compact">
-        <span class="vendor-avatar-small">
-          {% if item.vendeur.profile_photo %}
-          <img src="{{ url_for('static', filename='images/' ~ item.vendeur.profile_photo) }}" alt="{{ item.vendeur.nom }}">
-          {% else %}
-          {{ (item.vendeur.nom[:1] if item.vendeur.nom else 'V')|upper }}
-          {% endif %}
-        </span>
-        <span class="vendor-text">
-          <strong>{{ item.vendeur.nom }}</strong>
-          {% if item.vendeur.localisation %}<small>{{ item.vendeur.localisation }}</small>{% endif %}
-        </span>
-      </div>
-      <div class="price-big">{{ item.prix }} $</div>
-      <div class="product-action-compact">
-        <form method="POST" action="{{ url_for('client.ajouter_au_panier', product_id=item.id) }}">
-          <button type="submit" class="btn btn-primary">Ajouter</button>
-        </form>
-        <form method="POST" action="{{ url_for('client.toggle_favori', product_id=item.id) }}">
-          <button type="submit" class="btn btn-outline-primary btn-sm">
-            {% if item.id in favoris_ids %}
-            <i class="fa-solid fa-heart"></i>
-            {% else %}
-            <i class="fa-regular fa-heart"></i>
-            {% endif %}
-          </button>
-        </form>
+  </section>
+
+  <section class="dashboard-card-shell">
+    <div class="section-header section-header-compact">
+      <h2>Aperçu rapide</h2>
+    </div>
+    <div class="dashboard-summary-grid">
+      <article class="summary-card">
+        <span>Produits</span>
+        <strong>{{ produits|length }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>Favoris</span>
+        <strong>{{ favoris_ids|length }}</strong>
+      </article>
+      <article class="summary-card">
+        <span>Panier</span>
+        <strong>{{ panier_count }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-card-shell">
+    <div class="section-header section-header-compact">
+      <h2>Catégories</h2>
+    </div>
+    <div class="category-circles category-circles-card">
+      <div class="circles-inner">
+        <a href="{{ url_for('client.voir_produits', categorie='women') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-person-dress"></i></div>
+          <div class="circle-label">Femme</div>
+        </a>
+        <a href="{{ url_for('client.voir_produits', categorie='curve') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-person-cane"></i></div>
+          <div class="circle-label">Taille +</div>
+        </a>
+        <a href="{{ url_for('client.voir_produits', categorie='kids') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-child"></i></div>
+          <div class="circle-label">Enfant</div>
+        </a>
+        <a href="{{ url_for('client.voir_produits', categorie='men') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-person"></i></div>
+          <div class="circle-label">Homme</div>
+        </a>
+        <a href="{{ url_for('client.voir_produits', categorie='shoes') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-shoe-prints"></i></div>
+          <div class="circle-label">Chaussures</div>
+        </a>
+        <a href="{{ url_for('client.voir_produits', categorie='accessories') }}" class="circle-item">
+          <div class="circle-icon"><i class="fa-solid fa-watch-smart"></i></div>
+          <div class="circle-label">Accessoires</div>
+        </a>
       </div>
     </div>
-  </article>
-  {% endfor %}
+  </section>
+
+  <section class="dashboard-card-shell">
+    <div class="section-header section-header-compact">
+      <h2>Produits récents</h2>
+      <a href="{{ url_for('client.voir_produits') }}" class="see-all-link">Voir le catalogue</a>
+    </div>
+
+    {% if produits %}
+    <div class="trends-product-grid dashboard-product-grid">
+      {% for item in produits %}
+      <article class="trends-product-card product-clickable-card" role="link" tabindex="0" data-product-url="{{ url_for('client.detail_produit', product_id=item.id) }}" onclick="window.location=this.dataset.productUrl;" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location=this.dataset.productUrl;}">
+        <div class="product-image-container">
+          {% if item.image_principale %}
+          <img src="{{ url_for('static', filename='images/' ~ item.image_principale) }}" class="product-image" alt="{{ item.nom }}">
+          {% else %}
+          <div class="product-image-placeholder">
+            <i class="fa-solid fa-shirt"></i>
+          </div>
+          {% endif %}
+
+          <form method="POST" action="{{ url_for('client.ajouter_au_panier', product_id=item.id) }}" class="add-to-cart-form" onclick="event.stopPropagation();">
+            <button type="submit" class="add-to-cart-btn" title="Ajouter au panier">
+              <i class="fa-solid fa-cart-shopping"></i>
+            </button>
+          </form>
+
+          <form method="POST" action="{{ url_for('client.toggle_favori', product_id=item.id) }}" class="favorite-form" onclick="event.stopPropagation();">
+            <button type="submit" class="favorite-btn" title="Favori">
+              {% if item.id in favoris_ids %}
+              <i class="fa-solid fa-heart"></i>
+              {% else %}
+              <i class="fa-regular fa-heart"></i>
+              {% endif %}
+            </button>
+          </form>
+        </div>
+
+        <div class="product-info">
+          <div class="product-tag">Nouveau</div>
+          <h3 class="product-name">{{ item.nom[:30] }}{% if item.nom|length > 30 %}...{% endif %}</h3>
+
+          {% if item.vendeur %}
+          <div class="vendor-badge">{{ item.vendeur.nom[:20] }}</div>
+          {% endif %}
+
+          <div class="product-price-section">
+            <span class="product-price">${{ item.prix }}</span>
+            <span class="product-sold">Disponible</span>
+          </div>
+          <div class="product-card-hint">Cliquer pour voir les détails</div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state-trends">
+      <i class="fa-solid fa-shirt"></i>
+      <h3>Aucun produit disponible</h3>
+      <p>Les produits apparaîtront bientôt</p>
+    </div>
+    {% endif %}
+  </section>
 </div>
-{% else %}
-<div class="empty-state">
-  <i class="fa-solid fa-shirt"></i>
-  <h3>Aucun produit publié</h3>
-  <p>Les produits des vendeurs apparaîtront ici dès qu'ils seront mis en ligne.</p>
+
+<!-- Mobile Bottom Navigation (shown on mobile only) -->
+<div class="mobile-nav-bottom">
+  <a href="{{ url_for('client.client_home') }}" class="mobile-nav-item active">
+    <i class="fa-solid fa-home"></i>
+    <span>Acheter</span>
+  </a>
+  <a href="{{ url_for('client.voir_produits') }}" class="mobile-nav-item">
+    <i class="fa-solid fa-list"></i>
+    <span>Catégories</span>
+  </a>
+  <a href="#" class="mobile-nav-item">
+    <i class="fa-solid fa-fire"></i>
+    <span>Tendances</span>
+  </a>
+  <a href="{{ url_for('client.voir_panier') }}" class="mobile-nav-item">
+    <i class="fa-solid fa-cart-shopping"></i>
+    <span>Panier</span>
+    {% if panier_count %}
+    <span class="mobile-nav-badge">{{ panier_count }}</span>
+    {% endif %}
+  </a>
+  <a href="{{ url_for('auth.profile') }}" class="mobile-nav-item">
+    <i class="fa-solid fa-user"></i>
+    <span>Moi</span>
+  </a>
 </div>
-{% endif %}
+
 {% endblock %}

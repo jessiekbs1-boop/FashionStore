@@ -15,19 +15,33 @@
   <div class="cart-items">
     {% for item in products %}
     <article class="cart-item">
+      <div class="cart-item-thumb">
+        {% if item.produit.image_principale %}
+        <img src="{{ url_for('static', filename='images/' ~ item.produit.image_principale) }}" alt="{{ item.produit.nom }}">
+        {% else %}
+        <div class="thumb-placeholder"><i class="fa-solid fa-shirt"></i></div>
+        {% endif %}
+      </div>
       <div class="cart-item-main">
-        <h3>{{ item.produit.nom }}</h3>
-        <p>{{ item.produit.vendeur.nom }}</p>
-        <div class="cart-item-price">{{ item.produit.prix }} $ / unité</div>
+        <h4 class="cart-item-title">{{ item.produit.nom }}</h4>
+        <p class="cart-item-vendor">{{ item.produit.vendeur.nom }}</p>
+        <div class="cart-item-price">{{ item.produit.prix }} $</div>
+        {% if item.couleur or item.taille %}
+        <div class="cart-item-variant">
+          {% if item.couleur %}<span class="variant-pill">Couleur: {{ item.couleur }}</span>{% endif %}
+          {% if item.taille %}<span class="variant-pill">Taille: {{ item.taille }}</span>{% endif %}
+        </div>
+        {% endif %}
       </div>
       <div class="cart-item-actions">
-        <form method="POST" action="{{ url_for('client.modifier_panier', product_id=item.produit.id) }}" class="cart-qty-form">
+        <form method="POST" action="{{ url_for('client.modifier_panier', cart_key=item.cart_key) }}" class="cart-qty-form d-flex align-items-center">
+          <button type="submit" name="decrease" value="1" class="btn btn-light btn-qty">−</button>
           <input type="number" name="quantite" value="{{ item.quantite }}" min="1" class="form-control quantity-input">
-          <button type="submit" class="btn btn-primary btn-sm">Mettre à jour</button>
+          <button type="submit" name="increase" value="1" class="btn btn-light btn-qty">+</button>
         </form>
-        <div class="cart-item-total">Sous-total: {{ (item.produit.prix * item.quantite) | round(2) }} $</div>
-        <form method="POST" action="{{ url_for('client.supprimer_du_panier', product_id=item.produit.id) }}">
-          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
+        <div class="cart-item-subtotal">{{ (item.produit.prix * item.quantite) | round(2) }} $</div>
+        <form method="POST" action="{{ url_for('client.supprimer_du_panier', cart_key=item.cart_key) }}">
+          <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
         </form>
       </div>
     </article>
@@ -35,10 +49,14 @@
   </div>
 
   <aside class="cart-summary">
-    <h3>Résumé</h3>
-    <div class="summary-line"><span>Total</span><strong>{{ total | round(2) }} $</strong></div>
-    <p>Vérifie les quantités avant de finaliser ta commande.</p>
-    <a href="{{ url_for('client.passer_commande') }}" class="btn btn-success btn-lg w-100">Passer la commande</a>
+    <div class="summary-inner">
+      <h3>Résumé</h3>
+      <div class="summary-line"><span>Sous-total</span><strong>{{ total | round(2) }} $</strong></div>
+      <div class="summary-line"><span>Livraison</span><strong>{{ delivery_fee | default(0) }} $</strong></div>
+      <div class="summary-line total"><span>Total</span><strong>{{ (total + (delivery_fee or 0)) | round(2) }} $</strong></div>
+      <a href="{{ url_for('client.passer_commande') }}" class="btn btn-success btn-lg w-100">Passer la commande</a>
+      <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-secondary w-100 mt-2">Continuer mes achats</a>
+    </div>
   </aside>
 </div>
 {% else %}

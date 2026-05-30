@@ -13,6 +13,21 @@ vendeur_bp = Blueprint('vendeur', __name__)
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
 
+def _split_multi_values(raw_value):
+    if not raw_value:
+        return None
+    values = [value.strip() for value in raw_value.split(',') if value.strip()]
+    return ', '.join(values) if values else None
+
+
+def _normalize_category(raw_value):
+    return (raw_value or '').strip().lower() or None
+
+
+def _normalize_subcategory(raw_value):
+    return (raw_value or '').strip().lower() or None
+
+
 def _allowed_image(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
@@ -41,34 +56,53 @@ def vendeur_dashboard():
     if current_user.role != 'vendeur':
         return redirect(url_for('auth.login'))
     # Gather dashboard statistics with safe defaults
-    total_products = Product.query.filter_by(vendeur_id=current_user.id).count()
-    total_quantity = db.session.query(db.func.coalesce(db.func.sum(Product.quantite), 0)).filter_by(vendeur_id=current_user.id).scalar()
+    product_filters = [Product.vendeur_id == current_user.id]
+    if current_user.shop_id:
+        product_filters.append(Product.shop_id == current_user.shop_id)
+
+    total_products = Product.query.filter(*product_filters).count()
+    total_quantity = db.session.query(db.func.coalesce(db.func.sum(Product.quantite), 0)).filter(*product_filters).scalar()
 
     # Total orders containing seller's products
     total_orders = db.session.query(db.func.coalesce(db.func.count(db.distinct(Order.id)), 0))\
         .join(OrderItem, Order.id == OrderItem.order_id)\
         .join(Product, Product.id == OrderItem.product_id)\
-        .filter(Product.vendeur_id == current_user.id).scalar()
+        .filter(Product.vendeur_id == current_user.id)
+    if current_user.shop_id:
+        total_orders = total_orders.filter(Product.shop_id == current_user.shop_id)
+    total_orders = total_orders.scalar()
 
     total_sales = db.session.query(db.func.coalesce(db.func.sum(OrderItem.quantite), 0)).join(
         Product, Product.id == OrderItem.product_id
     ).join(Order, Order.id == OrderItem.order_id).filter(
         Product.vendeur_id == current_user.id,
         Order.statut.in_(['paye', 'expedie', 'livre'])
-    ).scalar()
+    )
+    if current_user.shop_id:
+        total_sales = total_sales.filter(Product.shop_id == current_user.shop_id)
+    total_sales = total_sales.scalar()
 
     revenus = db.session.query(db.func.coalesce(db.func.sum(OrderItem.prix * OrderItem.quantite), 0.0)).join(
         Product, Product.id == OrderItem.product_id
     ).join(Order, Order.id == OrderItem.order_id).filter(
         Product.vendeur_id == current_user.id,
         Order.statut.in_(['paye', 'expedie', 'livre'])
-    ).scalar()
+    )
+    if current_user.shop_id:
+        revenus = revenus.filter(Product.shop_id == current_user.shop_id)
+    revenus = revenus.scalar()
 
     average_rating = db.session.query(db.func.coalesce(db.func.avg(Review.note), 0.0)).filter_by(vendeur_id=current_user.id).scalar()
-    unread_messages = Message.query.filter_by(destinataire_id=current_user.id, lu=False).count()
+    unread_query = Message.query.filter_by(destinataire_id=current_user.id, lu=False)
+    if current_user.shop_id:
+        unread_query = unread_query.filter(Message.shop_id == current_user.shop_id)
+    unread_messages = unread_query.count()
     
     # Get seller's products for dashboard display
-    produits = Product.query.filter_by(vendeur_id=current_user.id).order_by(Product.created_at.desc()).all()
+    produits_query = Product.query.filter(Product.vendeur_id == current_user.id)
+    if current_user.shop_id:
+        produits_query = produits_query.filter(Product.shop_id == current_user.shop_id)
+    produits = produits_query.order_by(Product.created_at.desc()).all()
 
     return render_template('vendeur/dashboard.html',
                            total_products=total_products,
@@ -91,8 +125,10 @@ def commandes():
         .join(Product, Product.id == OrderItem.product_id)\
         .filter(Product.vendeur_id == current_user.id)\
         .order_by(Order.date.desc())\
-        .distinct()\
-        .all()
+        .distinct()
+    if current_user.shop_id:
+        orders = orders.filter(Product.shop_id == current_user.shop_id)
+    orders = orders.all()
     return render_template('vendeur/gestion_commandes.html', orders=orders)
 
 
@@ -113,7 +149,10 @@ def update_statut_commande(order_id):
     ).filter(
         Order.id == order_id,
         Product.vendeur_id == current_user.id
-    ).first_or_404()
+    )
+    if current_user.shop_id:
+        order = order.filter(Product.shop_id == current_user.shop_id)
+    order = order.first_or_404()
 
     order.statut = nouveau_statut
     db.session.commit()
@@ -128,8 +167,13 @@ def ajouter_produit():
     if request.method == 'POST':
         nom = request.form['nom']
         description = request.form.get('description', '').strip()
-        categorie = request.form.get('categorie', '').strip().lower() or None
+        categorie = _normalize_category(request.form.get('categorie'))
+        sous_categorie = _normalize_subcategory(request.form.get('sous_categorie'))
         taille = request.form.get('taille', '').strip().upper() or None
+        tailles_disponibles = _split_multi_values(request.form.get('tailles_disponibles', '').strip().upper())
+        couleurs = _split_multi_values(request.form.get('couleurs', '').strip())
+        delai_livraison_min = request.form.get('delai_livraison_min', type=int)
+        delai_livraison_max = request.form.get('delai_livraison_max', type=int)
         marque = request.form.get('marque', '').strip() or None
         localisation = request.form.get('localisation', '').strip() or current_user.localisation
         prix = request.form.get('prix', type=float)
@@ -148,9 +192,15 @@ def ajouter_produit():
             quantite=quantite,
             categorie=categorie,
             taille=taille,
+            tailles_disponibles=tailles_disponibles or taille,
+            couleurs=couleurs,
+            delai_livraison_min=delai_livraison_min,
+            delai_livraison_max=delai_livraison_max,
             marque=marque,
             localisation=localisation,
+            sous_categorie=sous_categorie,
             vendeur_id=current_user.id,
+            shop_id=current_user.shop_id,
         )
 
         image_file = request.files.get('image')
@@ -170,7 +220,7 @@ def ajouter_produit():
             saved = _save_image(extra_image)
             if saved:
                 image_paths.append(saved)
-                db.session.add(ProductImage(product_id=produit.id, image_path=saved, position=index))
+                db.session.add(ProductImage(product_id=produit.id, image_path=saved, position=index, shop_id=current_user.shop_id))
 
         db.session.commit()
         flash('Produit ajoute avec succes.')
@@ -183,7 +233,7 @@ def modifier_produit(produit_id):
     if current_user.role != 'vendeur':
         return redirect(url_for('auth.login'))
     produit = Product.query.get_or_404(produit_id)
-    if produit.vendeur_id != current_user.id:
+    if produit.vendeur_id != current_user.id or (current_user.shop_id and produit.shop_id != current_user.shop_id):
         flash('Acces refuse.')
         return redirect(url_for('vendeur.vendeur_home'))
     if request.method == 'POST':
@@ -192,8 +242,13 @@ def modifier_produit(produit_id):
         produit.prix = request.form.get('prix', type=float)
         produit.ancien_prix = request.form.get('ancien_prix', type=float)
         produit.quantite = request.form.get('quantite', type=int)
-        produit.categorie = request.form.get('categorie', '').strip().lower() or None
+        produit.categorie = _normalize_category(request.form.get('categorie'))
+        produit.sous_categorie = _normalize_subcategory(request.form.get('sous_categorie'))
         produit.taille = request.form.get('taille', '').strip().upper() or None
+        produit.tailles_disponibles = _split_multi_values(request.form.get('tailles_disponibles', '').strip().upper()) or produit.taille
+        produit.couleurs = _split_multi_values(request.form.get('couleurs', '').strip())
+        produit.delai_livraison_min = request.form.get('delai_livraison_min', type=int)
+        produit.delai_livraison_max = request.form.get('delai_livraison_max', type=int)
         produit.marque = request.form.get('marque', '').strip() or None
         produit.localisation = request.form.get('localisation', '').strip() or produit.localisation
 
@@ -208,7 +263,7 @@ def modifier_produit(produit_id):
         for index, extra_image in enumerate(request.files.getlist('images')):
             saved = _save_image(extra_image)
             if saved:
-                db.session.add(ProductImage(product_id=produit.id, image_path=saved, position=index))
+                db.session.add(ProductImage(product_id=produit.id, image_path=saved, position=index, shop_id=current_user.shop_id))
 
         db.session.commit()
         flash('Produit modifie avec succes.')
@@ -221,7 +276,7 @@ def supprimer_produit(produit_id):
     if current_user.role != 'vendeur':
         return redirect(url_for('auth.login'))
     produit = Product.query.get_or_404(produit_id)
-    if produit.vendeur_id != current_user.id:
+    if produit.vendeur_id != current_user.id or (current_user.shop_id and produit.shop_id != current_user.shop_id):
         flash('Acces refuse.')
         return redirect(url_for('vendeur.vendeur_home'))
     db.session.delete(produit)
@@ -234,7 +289,10 @@ def supprimer_produit(produit_id):
 def stock_vendeur():
     if current_user.role != 'vendeur':
         return redirect(url_for('auth.login'))
-    produits = Product.query.filter_by(vendeur_id=current_user.id).all()
+    produits_query = Product.query.filter(Product.vendeur_id == current_user.id)
+    if current_user.shop_id:
+        produits_query = produits_query.filter(Product.shop_id == current_user.shop_id)
+    produits = produits_query.all()
     return render_template('vendeur/stock.html', produits=produits)
 
 
@@ -249,7 +307,12 @@ def messages_vendeur():
         contenu = request.form.get('contenu', '').strip()
         destinataire = User.query.filter_by(id=destinataire_id, role='client', actif=True).first()
         if destinataire and contenu:
-            db.session.add(Message(expediteur_id=current_user.id, destinataire_id=destinataire.id, contenu=contenu))
+            db.session.add(Message(
+                expediteur_id=current_user.id,
+                destinataire_id=destinataire.id,
+                contenu=contenu,
+                shop_id=current_user.shop_id
+            ))
             db.session.commit()
             flash('Message envoye avec succes.', 'success')
         else:
@@ -267,7 +330,7 @@ def messages_vendeur():
             expediteur_id=partenaire_candidat.id,
             destinataire_id=current_user.id,
             lu=False,
-        ).count()
+        ).filter(Message.shop_id == current_user.shop_id if current_user.shop_id else True).count()
 
     if partenaire_id:
         partenaire = User.query.filter_by(id=partenaire_id, role='client').first()
@@ -277,8 +340,15 @@ def messages_vendeur():
                     and_(Message.expediteur_id == current_user.id, Message.destinataire_id == partenaire_id),
                     and_(Message.expediteur_id == partenaire_id, Message.destinataire_id == current_user.id),
                 )
-            ).order_by(Message.date.asc()).all()
-            Message.query.filter_by(expediteur_id=partenaire_id, destinataire_id=current_user.id, lu=False).update({'lu': True})
+            )
+            if current_user.shop_id:
+                conversation = conversation.filter(Message.shop_id == current_user.shop_id)
+            conversation = conversation.order_by(Message.date.asc()).all()
+
+            mark_read = Message.query.filter_by(expediteur_id=partenaire_id, destinataire_id=current_user.id, lu=False)
+            if current_user.shop_id:
+                mark_read = mark_read.filter(Message.shop_id == current_user.shop_id)
+            mark_read.update({'lu': True})
             db.session.commit()
 
     return render_template(

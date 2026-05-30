@@ -44,7 +44,12 @@ class Product(db.Model):
     quantite = db.Column(db.Integer, nullable=False)
     image = db.Column(db.String(255), nullable=True)
     categorie = db.Column(db.String(50), nullable=True)
+    sous_categorie = db.Column(db.String(80), nullable=True)
     taille = db.Column(db.String(20), nullable=True)
+    tailles_disponibles = db.Column(db.String(255), nullable=True)
+    couleurs = db.Column(db.String(255), nullable=True)
+    delai_livraison_min = db.Column(db.Integer, nullable=True)
+    delai_livraison_max = db.Column(db.Integer, nullable=True)
     marque = db.Column(db.String(80), nullable=True)
     localisation = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -57,9 +62,12 @@ class Product(db.Model):
 
     @property
     def image_principale(self):
+        if self.image:
+            return self.image
         if self.images:
-            return self.images[0].image_path
-        return self.image
+            ordered_images = sorted(self.images, key=lambda image: (image.position or 0, image.id or 0))
+            return ordered_images[0].image_path if ordered_images else None
+        return None
 
 class ProductImage(db.Model):
     __tablename__ = 'product_images'
@@ -128,6 +136,17 @@ class Payment(db.Model):
     transaction_id = db.Column(db.String(120), nullable=True)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=True)
+    events = db.relationship('PaymentEvent', backref='payment', lazy=True, cascade="all, delete-orphan")
+
+
+class PaymentEvent(db.Model):
+    __tablename__ = 'payment_events'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
+    event_type = db.Column(db.String(80), nullable=False)
+    payload = db.Column(db.Text, nullable=True)
+    source = db.Column(db.String(50), nullable=False, default='system')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Review(db.Model):
     __tablename__ = 'reviews'

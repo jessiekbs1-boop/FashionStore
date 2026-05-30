@@ -5,13 +5,54 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_
 
-from models import Favorite, Message, Order, OrderItem, Payment, Product, Review, User, db
+from models import Favorite, Message, Order, OrderItem, Payment, PaymentEvent, Product, Review, User, db
 from models import Shop
 from math import radians, cos, sin, asin, sqrt
 from utils.geocode import geocode_address
 from utils.cinetpay import CinetPayAPI
 
 client_bp = Blueprint('client', __name__)
+
+
+def _split_display_values(raw_value):
+    if not raw_value:
+        return []
+    return [value.strip() for value in raw_value.split(',') if value.strip()]
+
+
+def _cart_quantity(entry):
+    if isinstance(entry, dict):
+        return int(entry.get('quantite', 0) or 0)
+    try:
+        return int(entry)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _cart_item_payload(entry):
+    if isinstance(entry, dict):
+        return {
+            'quantite': int(entry.get('quantite', 1) or 1),
+            'couleur': entry.get('couleur'),
+            'taille': entry.get('taille'),
+        }
+    return {'quantite': _cart_quantity(entry), 'couleur': None, 'taille': None}
+
+
+def _normalize_cart_value(value):
+    return (value or '').strip()
+
+
+def _cart_key(product_id, couleur=None, taille=None):
+    return f"{product_id}::{_normalize_cart_value(couleur).lower()}::{_normalize_cart_value(taille).upper()}"
+
+
+def _parse_cart_key(cart_key):
+    parts = (cart_key or '').split('::', 2)
+    if len(parts) != 3:
+        return None, None, None
+    product_id, couleur, taille = parts
+    return product_id, couleur or None, taille or None
 
 @client_bp.route('/client')
 @login_required
@@ -25,9 +66,11 @@ def client_home():
 def client_dashboard():
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
-    produits = Product.query.order_by(Product.created_at.desc()).all()
+    produits = Product.query.order_by(Product.created_at.desc()).limit(12).all()
     favoris_ids = {f.product_id for f in Favorite.query.filter_by(user_id=current_user.id).all()}
-    return render_template('client/dashboard.html', produits=produits, favoris_ids=favoris_ids)
+    panier = session.get('panier', {})
+    panier_count = sum(_cart_quantity(q) for q in panier.values()) if panier else 0
+    return render_template('client/dashboard.html', produits=produits, favoris_ids=favoris_ids, panier_count=panier_count)
 
 @client_bp.route('/client/commandes')
 @login_required
@@ -45,12 +88,25 @@ def voir_panier():
     panier = session.get('panier', {})
     products = []
     total = 0
-    for product_id, quantite in panier.items():
+    for cart_key, entry in panier.items():
+        payload = _cart_item_payload(entry)
+        quantite = payload['quantite']
+        product_id, couleur_from_key, taille_from_key = _parse_cart_key(cart_key)
+        if product_id is None:
+            product_id = cart_key
         produit = db.session.get(Product, int(product_id))
         if produit:
-            products.append({'produit': produit, 'quantite': quantite})
+            products.append({
+                'cart_key': cart_key,
+                'produit': produit,
+                'quantite': quantite,
+                'couleur': payload['couleur'] or couleur_from_key,
+                'taille': payload['taille'] or taille_from_key,
+            })
             total += produit.prix * quantite
-    return render_template('client/panier.html', products=products, total=total)
+    panier_count = sum(_cart_quantity(q) for q in panier.values()) if panier else 0
+    delivery_fee = session.get('delivery_fee', 0)
+    return render_template('client/panier.html', products=products, total=total, panier_count=panier_count, delivery_fee=delivery_fee)
 
 @client_bp.route('/client/panier/ajouter/<int:product_id>', methods=['POST'])
 @login_required
@@ -59,38 +115,62 @@ def ajouter_au_panier(product_id):
         return redirect(url_for('auth.login'))
     panier = session.get('panier', {})
     quantite = max(1, int(request.form.get('quantite', 1)))
+    couleur = request.form.get('couleur', '').strip() or None
+    taille = request.form.get('taille', '').strip() or None
     produit = db.session.get(Product, product_id)
     if produit is None:
         flash('Produit introuvable.')
         return redirect(url_for('client.voir_produits'))
 
-    panier[str(product_id)] = panier.get(str(product_id), 0) + quantite
+    couleurs_disponibles = _split_display_values(produit.couleurs)
+    tailles_disponibles = _split_display_values(produit.tailles_disponibles) or _split_display_values(produit.taille)
+    if couleurs_disponibles and not couleur:
+        flash('Veuillez choisir une couleur disponible.', 'danger')
+        return redirect(url_for('client.detail_produit', product_id=product_id))
+    if tailles_disponibles and not taille:
+        flash('Veuillez choisir une taille disponible.', 'danger')
+        return redirect(url_for('client.detail_produit', product_id=product_id))
+    if couleurs_disponibles and couleur and couleur not in couleurs_disponibles:
+        flash('Couleur invalide.', 'danger')
+        return redirect(url_for('client.detail_produit', product_id=product_id))
+    if tailles_disponibles and taille and taille not in tailles_disponibles:
+        flash('Taille invalide.', 'danger')
+        return redirect(url_for('client.detail_produit', product_id=product_id))
+
+    cart_key = _cart_key(product_id, couleur, taille)
+    current_entry = _cart_item_payload(panier.get(cart_key))
+    current_entry['quantite'] = current_entry['quantite'] + quantite
+    current_entry['couleur'] = couleur or current_entry['couleur']
+    current_entry['taille'] = taille or current_entry['taille']
+    panier[cart_key] = current_entry
     session['panier'] = panier
     flash('Produit ajoute au panier.')
-    return redirect(url_for('client.voir_produits'))
+    return redirect(url_for('client.detail_produit', product_id=product_id))
 
-@client_bp.route('/client/panier/modifier/<int:product_id>', methods=['POST'])
+@client_bp.route('/client/panier/modifier/<path:cart_key>', methods=['POST'])
 @login_required
-def modifier_panier(product_id):
+def modifier_panier(cart_key):
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
     panier = session.get('panier', {})
     quantite = int(request.form.get('quantite', 1))
+    current_entry = _cart_item_payload(panier.get(cart_key))
     if quantite <= 0:
-        panier.pop(str(product_id), None)
+        panier.pop(cart_key, None)
     else:
-        panier[str(product_id)] = quantite
+        current_entry['quantite'] = quantite
+        panier[cart_key] = current_entry
     session['panier'] = panier
     flash('Panier mis a jour.')
     return redirect(url_for('client.voir_panier'))
 
-@client_bp.route('/client/panier/supprimer/<int:product_id>', methods=['POST'])
+@client_bp.route('/client/panier/supprimer/<path:cart_key>', methods=['POST'])
 @login_required
-def supprimer_du_panier(product_id):
+def supprimer_du_panier(cart_key):
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
     panier = session.get('panier', {})
-    panier.pop(str(product_id), None)
+    panier.pop(cart_key, None)
     session['panier'] = panier
     flash('Produit supprime du panier.')
     return redirect(url_for('client.voir_panier'))
@@ -105,7 +185,11 @@ def passer_commande():
         flash('Votre panier est vide.')
         return redirect(url_for('client.client_home'))
     total = 0
-    for product_id, quantite in panier.items():
+    for cart_key, entry in panier.items():
+        product_id, _, _ = _parse_cart_key(cart_key)
+        if product_id is None:
+            product_id = cart_key
+        quantite = _cart_quantity(entry)
         try:
             pid = int(product_id)
         except ValueError:
@@ -120,6 +204,22 @@ def passer_commande():
             return redirect(url_for('client.voir_panier'))
         total += produit.prix * quantite
     commande = Order(client_id=current_user.id, date=datetime.now(UTC), statut='en attente', total=total)
+
+    # If all products are from one shop, store shop scope directly on order.
+    cart_shop_ids = set()
+    for cart_key in panier.keys():
+        product_id, _, _ = _parse_cart_key(cart_key)
+        if product_id is None:
+            product_id = cart_key
+        try:
+            produit_for_shop = db.session.get(Product, int(product_id))
+        except (TypeError, ValueError):
+            produit_for_shop = None
+        if produit_for_shop and produit_for_shop.shop_id:
+            cart_shop_ids.add(produit_for_shop.shop_id)
+    if len(cart_shop_ids) == 1:
+        commande.shop_id = next(iter(cart_shop_ids))
+
     db.session.add(commande)
     db.session.flush()
     # Compute default delivery fee based on products' shops
@@ -129,10 +229,14 @@ def passer_commande():
     except Exception:
         # if calculation fails, leave frais_livraison None
         pass
-    for product_id, quantite in panier.items():
+    for cart_key, entry in panier.items():
+        product_id, _, _ = _parse_cart_key(cart_key)
+        if product_id is None:
+            product_id = cart_key
         produit = db.session.get(Product, int(product_id))
-        produit.quantite -= quantite
-        item = OrderItem(order_id=commande.id, product_id=produit.id, quantite=quantite, prix=produit.prix)
+        qty = _cart_quantity(entry)
+        produit.quantite -= qty
+        item = OrderItem(order_id=commande.id, product_id=produit.id, quantite=qty, prix=produit.prix)
         db.session.add(item)
     db.session.commit()
     session['panier'] = {}
@@ -217,8 +321,16 @@ def traiter_paiement():
         methode=methode,
         statut=payment_status,
         transaction_id=transaction_id,
+        shop_id=commande.shop_id,
     )
     db.session.add(payment)
+    db.session.flush()
+    db.session.add(PaymentEvent(
+        payment_id=payment.id,
+        event_type='payment_created',
+        payload=f'methode={methode};status={payment_status}',
+        source='app'
+    ))
     db.session.commit()
     flash('Paiement traite avec succes.')
     if methode == 'CinetPay':
@@ -231,8 +343,17 @@ def traiter_paiement():
 def delivery_calc():
     if current_user.role != 'client':
         return {'error': 'unauthorized'}, 403
-    addr = request.form.get('address') or request.json.get('address') if request.is_json else request.form.get('address')
-    order_id = request.form.get('order_id', type=int) or (request.json.get('order_id') if request.is_json else None)
+    if request.is_json:
+        payload = request.get_json(silent=True) or {}
+        addr = payload.get('address')
+        order_id = payload.get('order_id')
+        try:
+            order_id = int(order_id) if order_id is not None else None
+        except (TypeError, ValueError):
+            order_id = None
+    else:
+        addr = request.form.get('address')
+        order_id = request.form.get('order_id', type=int)
 
     # geocode target address
     coords = geocode_address(addr)
@@ -299,6 +420,10 @@ def cinetpay_checkout(payment_id):
         Payment.methode == 'CinetPay'
     ).first_or_404()
 
+    if payment.statut == 'paye':
+        flash('Ce paiement est deja confirme.', 'info')
+        return redirect(url_for('client.client_orders'))
+
     # Initialize CinetPay API
     api_key = current_app.config.get('CINETPAY_API_KEY')
     site_id = current_app.config.get('CINETPAY_SITE_ID')
@@ -324,8 +449,22 @@ def cinetpay_checkout(payment_id):
     )
     
     if payment_url:
+        db.session.add(PaymentEvent(
+            payment_id=payment.id,
+            event_type='payment_redirected',
+            payload='redirect_to_cinetpay',
+            source='app'
+        ))
+        db.session.commit()
         return redirect(payment_url)
     else:
+        db.session.add(PaymentEvent(
+            payment_id=payment.id,
+            event_type='payment_redirect_failed',
+            payload='no_payment_url',
+            source='app'
+        ))
+        db.session.commit()
         flash('Failed to generate CinetPay payment link.', 'danger')
         return redirect(url_for('client.choisir_paiement', order_id=payment.order_id))
 
@@ -350,8 +489,15 @@ def cinetpay_return(payment_id):
     if api_key and site_id:
         cinetpay = CinetPayAPI(api_key, site_id)
         if cinetpay.verify_payment(payment.transaction_id):
-            payment.statut = 'paye'
-            payment.order.statut = 'paye'
+            if payment.statut != 'paye':
+                payment.statut = 'paye'
+                payment.order.statut = 'paye'
+                db.session.add(PaymentEvent(
+                    payment_id=payment.id,
+                    event_type='payment_confirmed_return',
+                    payload='status=accepted',
+                    source='return'
+                ))
             db.session.commit()
             flash('Paiement CinetPay confirme avec succes.', 'success')
             return redirect(url_for('client.client_orders'))
@@ -364,9 +510,20 @@ def cinetpay_return(payment_id):
 def cinetpay_webhook():
     """Handle CinetPay webhook notification."""
     try:
-        data = request.get_json() or request.form.to_dict()
+        payload_raw = request.get_data(as_text=True) or ''
+        data = request.get_json(silent=True) or request.form.to_dict()
         transaction_id = data.get('transaction_id')
         status = data.get('status', '').lower()
+
+        api_key = current_app.config.get('CINETPAY_API_KEY')
+        site_id = current_app.config.get('CINETPAY_SITE_ID')
+        webhook_secret = current_app.config.get('CINETPAY_WEBHOOK_SECRET')
+        signature = request.headers.get('X-CinetPay-Signature') or request.headers.get('X-Signature')
+
+        if api_key and site_id and webhook_secret and signature:
+            cinetpay = CinetPayAPI(api_key, site_id)
+            if not cinetpay.validate_webhook(signature, payload_raw, webhook_secret):
+                return {'error': 'invalid_signature'}, 401
         
         if not transaction_id:
             return {'error': 'missing_transaction_id'}, 400
@@ -374,20 +531,46 @@ def cinetpay_webhook():
         payment = Payment.query.filter_by(transaction_id=transaction_id).first()
         if not payment:
             return {'error': 'payment_not_found'}, 404
+
+        db.session.add(PaymentEvent(
+            payment_id=payment.id,
+            event_type='webhook_received',
+            payload=payload_raw[:4000],
+            source='webhook'
+        ))
         
         # Update payment status based on CinetPay webhook
         if status in ('accepted', 'confirmed', 'success'):
-            payment.statut = 'paye'
-            payment.order.statut = 'paye'
+            if payment.statut != 'paye':
+                payment.statut = 'paye'
+                payment.order.statut = 'paye'
+                db.session.add(PaymentEvent(
+                    payment_id=payment.id,
+                    event_type='payment_confirmed_webhook',
+                    payload=f'status={status}',
+                    source='webhook'
+                ))
             db.session.commit()
             return {'status': 'ok'}, 200
         elif status in ('rejected', 'failed'):
             payment.statut = 'echoue'
+            db.session.add(PaymentEvent(
+                payment_id=payment.id,
+                event_type='payment_failed_webhook',
+                payload=f'status={status}',
+                source='webhook'
+            ))
             db.session.commit()
             return {'status': 'ok'}, 200
         else:
             # pending, processing, etc
             payment.statut = 'en attente'
+            db.session.add(PaymentEvent(
+                payment_id=payment.id,
+                event_type='payment_pending_webhook',
+                payload=f'status={status}',
+                source='webhook'
+            ))
             db.session.commit()
             return {'status': 'ok'}, 200
     except Exception as e:
@@ -400,7 +583,8 @@ def voir_produits():
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
     query = request.args.get('q', '').strip()
-    categorie = request.args.get('categorie', '').strip()
+    categorie = request.args.get('categorie', '').strip().lower()
+    sous_categorie = request.args.get('sous_categorie', '').strip().lower()
     taille = request.args.get('taille', '').strip()
     marque = request.args.get('marque', '').strip()
     localisation = request.args.get('localisation', '').strip()
@@ -419,6 +603,8 @@ def voir_produits():
     filters = []
     if categorie:
         filters.append(Product.categorie == categorie)
+    if sous_categorie:
+        filters.append(Product.sous_categorie == sous_categorie)
     if taille:
         filters.append(Product.taille == taille)
     if marque:
@@ -437,23 +623,75 @@ def voir_produits():
     pagination = products_query.order_by(Product.created_at.desc()).paginate(page=page, per_page=9, error_out=False)
     products = pagination.items
     favoris_ids = {f.product_id for f in Favorite.query.filter_by(user_id=current_user.id).all()}
-    categories = ['homme', 'femme', 'enfant']
+    categories = ['homme', 'femme', 'enfant', 'chaussures', 'accessoires']
+    subcategories_by_category = {
+        'chaussures': ['babouches', 'sandales', 'basket', 'bottes'],
+        'accessoires': ['bracelet', 'montre', 'bijoux', 'sac dame', 'sac à dos'],
+    }
+    subcategories = subcategories_by_category.get(categorie, [])
     tailles = ['XS', 'S', 'M', 'L', 'XL']
+
+    panier = session.get('panier', {})
+    panier_count = sum(int(q) for q in panier.values()) if panier else 0
 
     return render_template(
         'client/produits.html',
         products=products,
         query=query,
         categorie=categorie,
+        sous_categorie=sous_categorie,
         taille=taille,
         marque=marque,
         localisation=localisation,
         min_prix=min_prix,
         max_prix=max_prix,
         categories=categories,
+        subcategories=subcategories,
         tailles=tailles,
         pagination=pagination,
         favoris_ids=favoris_ids,
+        panier_count=panier_count,
+    )
+
+
+@client_bp.route('/client/produit/<int:product_id>')
+@login_required
+def detail_produit(product_id):
+    if current_user.role != 'client':
+        return redirect(url_for('auth.login'))
+
+    produit = Product.query.get_or_404(product_id)
+    couleurs_disponibles = _split_display_values(produit.couleurs)
+    tailles_disponibles = _split_display_values(produit.tailles_disponibles) or _split_display_values(produit.taille)
+
+    if produit.delai_livraison_min and produit.delai_livraison_max:
+        delai_livraison = f"{produit.delai_livraison_min} à {produit.delai_livraison_max} jours"
+    elif produit.delai_livraison_min:
+        delai_livraison = f"Dès {produit.delai_livraison_min} jours"
+    elif produit.delai_livraison_max:
+        delai_livraison = f"Jusqu'à {produit.delai_livraison_max} jours"
+    else:
+        delai_livraison = '3 à 5 jours'
+
+    images = []
+    if produit.image_principale:
+        images.append(produit.image_principale)
+
+    ordered_images = sorted(
+        (image for image in produit.images if image.image_path),
+        key=lambda image: (image.position or 0, image.id or 0),
+    )
+    for image in ordered_images:
+        if image.image_path not in images:
+            images.append(image.image_path)
+
+    return render_template(
+        'client/produit_detail.html',
+        produit=produit,
+        couleurs_disponibles=couleurs_disponibles,
+        tailles_disponibles=tailles_disponibles,
+        delai_livraison=delai_livraison,
+        images=images,
     )
 
 @client_bp.route('/client/favoris')
@@ -498,7 +736,12 @@ def client_messages():
         contenu = request.form.get('contenu', '').strip()
         destinataire = User.query.filter_by(id=destinataire_id, role='vendeur', actif=True).first()
         if destinataire and contenu:
-            db.session.add(Message(expediteur_id=current_user.id, destinataire_id=destinataire.id, contenu=contenu))
+            db.session.add(Message(
+                expediteur_id=current_user.id,
+                destinataire_id=destinataire.id,
+                contenu=contenu,
+                shop_id=destinataire.shop_id
+            ))
             db.session.commit()
             flash('Message envoye avec succes.', 'success')
         else:
@@ -512,11 +755,14 @@ def client_messages():
     unread_by_partner = {}
 
     for partenaire_candidat in partenaires:
-        unread_by_partner[partenaire_candidat.id] = Message.query.filter_by(
+        unread_query = Message.query.filter_by(
             expediteur_id=partenaire_candidat.id,
             destinataire_id=current_user.id,
             lu=False,
-        ).count()
+        )
+        if partenaire_candidat.shop_id:
+            unread_query = unread_query.filter(Message.shop_id == partenaire_candidat.shop_id)
+        unread_by_partner[partenaire_candidat.id] = unread_query.count()
 
     if partenaire_id:
         partenaire = User.query.filter_by(id=partenaire_id, role='vendeur').first()

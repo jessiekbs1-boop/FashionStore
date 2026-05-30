@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}{{ produit.nom }}{% endblock %}
+{% block content %}
+
+<section class="product-detail-page">
+  <div class="product-detail-gallery card-surface">
+    <div class="product-detail-main-image">
+      {% if images %}
+      <img id="detailMainImage" src="{{ url_for('static', filename='images/' ~ images[0]) }}" alt="{{ produit.nom }}">
+      {% else %}
+      <div class="product-detail-placeholder">
+        <i class="fa-solid fa-shirt"></i>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if images|length > 1 %}
+    <div class="product-detail-thumbs">
+      {% for image in images %}
+      <button type="button" class="product-detail-thumb {% if loop.first %}is-active{% endif %}" data-image-url="{{ url_for('static', filename='images/' ~ image) }}" aria-label="Afficher la photo {{ loop.index }}">
+        <img src="{{ url_for('static', filename='images/' ~ image) }}" alt="{{ produit.nom }}">
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="product-detail-info card-surface">
+    <span class="section-tag">Détail produit</span>
+    <h1>{{ produit.nom }}</h1>
+    <div class="product-detail-price-row">
+      <div class="product-detail-price">{{ produit.prix }} $</div>
+      {% if produit.ancien_prix %}
+      <div class="product-detail-old-price">{{ produit.ancien_prix }} $</div>
+      {% endif %}
+    </div>
+
+    <p class="product-detail-description">{{ produit.description or 'Aucune description fournie pour ce produit.' }}</p>
+
+    {% set color_palette = {
+      'noir': '#111827',
+      'black': '#111827',
+      'blanc': '#f9fafb',
+      'white': '#f9fafb',
+      'gris': '#9ca3af',
+      'gray': '#9ca3af',
+      'rouge': '#ef4444',
+      'red': '#ef4444',
+      'bleu': '#2563eb',
+      'blue': '#2563eb',
+      'vert': '#16a34a',
+      'green': '#16a34a',
+      'rose': '#ec4899',
+      'pink': '#ec4899',
+      'beige': '#d6c8b4',
+      'marron': '#8b5a2b',
+      'brown': '#8b5a2b',
+      'jaune': '#f59e0b',
+      'yellow': '#f59e0b',
+      'violet': '#8b5cf6',
+      'purple': '#8b5cf6'
+    } %}
+
+    <div class="product-detail-meta-grid">
+      <div class="product-detail-meta-box">
+        <span>Couleurs disponibles</span>
+        {% if couleurs_disponibles %}
+        <div class="swatch-list swatch-list-color">
+          {% for couleur in couleurs_disponibles %}
+          <span class="swatch-pill swatch-pill-color" title="{{ couleur }}">
+            <span class="swatch-color-dot" style="background: {{ color_palette.get(couleur|lower, '#cbd5e1') }};"></span>
+            {{ couleur }}
+          </span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <strong>Non précisé</strong>
+        {% endif %}
+      </div>
+
+      <div class="product-detail-meta-box">
+        <span>Tailles disponibles</span>
+        {% if tailles_disponibles %}
+        <div class="swatch-list swatch-list-size">
+          {% for taille in tailles_disponibles %}
+          <span class="swatch-pill swatch-pill-size swatch-pill-compact">{{ taille }}</span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <strong>Non précisé</strong>
+        {% endif %}
+      </div>
+
+      <div class="product-detail-meta-box">
+        <span>Durée de livraison</span>
+        <div class="delivery-badge">
+          <i class="fa-solid fa-truck-fast"></i>
+          <strong>{{ delai_livraison }}</strong>
+        </div>
+      </div>
+
+      <div class="product-detail-meta-box">
+        <span>Stock</span>
+        <strong>{{ produit.quantite }} pièce(s)</strong>
+      </div>
+    </div>
+
+    <div class="product-detail-extra">
+      <div><span>Vendeur</span><strong>{{ produit.vendeur.nom if produit.vendeur else 'Non renseigné' }}</strong></div>
+      <div><span>Localisation</span><strong>{{ produit.localisation or (produit.vendeur.localisation if produit.vendeur else 'Non renseignée') }}</strong></div>
+      <div><span>Catégorie</span><strong>{{ produit.categorie or 'Non renseignée' }}</strong></div>
+      <div><span>Sous-catégorie</span><strong>{{ produit.sous_categorie or 'Non renseignée' }}</strong></div>
+      <div><span>Marque</span><strong>{{ produit.marque or 'Non renseignée' }}</strong></div>
+    </div>
+
+    <form method="POST" action="{{ url_for('client.ajouter_au_panier', product_id=produit.id) }}" class="product-detail-actions">
+      <label for="quantite" class="form-label fw-700">Quantité</label>
+      <div class="variant-choice-block">
+        <label class="form-label fw-700">Couleur</label>
+        {% if couleurs_disponibles %}
+        <div class="variant-choice-group">
+          {% for couleur in couleurs_disponibles %}
+          <label class="variant-choice-pill variant-choice-color">
+            <input type="radio" name="couleur" value="{{ couleur }}" {% if loop.first %}required{% endif %}>
+            <span>{{ couleur }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="variant-empty-hint">Aucune couleur renseignée</div>
+        {% endif %}
+      </div>
+
+      <div class="variant-choice-block mt-3">
+        <label class="form-label fw-700">Taille</label>
+        {% if tailles_disponibles %}
+        <div class="variant-choice-group">
+          {% for taille in tailles_disponibles %}
+          <label class="variant-choice-pill variant-choice-size">
+            <input type="radio" name="taille" value="{{ taille }}" {% if loop.first %}required{% endif %}>
+            <span>{{ taille }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="variant-empty-hint">Aucune taille renseignée</div>
+        {% endif %}
+      </div>
+
+      <div class="variant-selection-summary" aria-live="polite">
+        <div class="variant-selection-summary-label">Sélection actuelle</div>
+        <div class="variant-selection-summary-values">
+          <span class="variant-summary-pill" id="selectedColorSummary">Couleur: non choisie</span>
+          <span class="variant-summary-pill" id="selectedSizeSummary">Taille: non choisie</span>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap mt-3">
+        <input type="number" name="quantite" id="quantite" class="form-control detail-qty-input" min="1" value="1">
+        <button type="submit" class="btn btn-primary btn-lg">Ajouter au panier</button>
+        <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-primary btn-lg">Retour au catalogue</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.querySelector('.product-detail-actions');
+  if (!form) return;
+  const mainImage = document.getElementById('detailMainImage');
+  const thumbButtons = Array.from(document.querySelectorAll('.product-detail-thumb'));
+  const submitButton = form.querySelector('button[type="submit"]');
+  const radioGroups = Array.from(form.querySelectorAll('input[type="radio"]'));
+  const selectedColorSummary = document.getElementById('selectedColorSummary');
+  const selectedSizeSummary = document.getElementById('selectedSizeSummary');
+
+  const colorPalette = {{ color_palette | tojson }};
+
+  const updateButtonState = () => {
+    const requiredGroups = ['couleur', 'taille'].filter((name) => form.querySelectorAll(`input[name="${name}"]`).length > 0);
+    const groupOk = requiredGroups.every((name) => !!form.querySelector(`input[name="${name}"]:checked`));
+    submitButton.disabled = !groupOk;
+
+    const selectedColor = form.querySelector('input[name="couleur"]:checked');
+    const selectedSize = form.querySelector('input[name="taille"]:checked');
+
+    if (selectedColorSummary) {
+      const colorValue = selectedColor ? selectedColor.value : 'non choisie';
+      const colorDot = selectedColor ? (colorPalette[(selectedColor.value || '').toLowerCase()] || '#cbd5e1') : '#cbd5e1';
+      selectedColorSummary.innerHTML = `<span class="summary-color-dot" style="background: ${colorDot};"></span>Couleur: ${colorValue}`;
+    }
+
+    if (selectedSizeSummary) {
+      selectedSizeSummary.textContent = `Taille: ${selectedSize ? selectedSize.value : 'non choisie'}`;
+    }
+  };
+
+  radioGroups.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const scope = radio.closest('.variant-choice-group');
+      if (scope) {
+        scope.querySelectorAll('.variant-choice-pill').forEach((pill) => pill.classList.remove('is-selected'));
+      }
+      radio.closest('.variant-choice-pill')?.classList.add('is-selected');
+      updateButtonState();
+    });
+  });
+
+  thumbButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const imageUrl = button.dataset.imageUrl;
+      if (mainImage && imageUrl) {
+        mainImage.src = imageUrl;
+      }
+      thumbButtons.forEach((thumb) => thumb.classList.remove('is-active'));
+      button.classList.add('is-active');
+    });
+  });
+
+  updateButtonState();
+});
+</script>
+
+{% endblock %}
