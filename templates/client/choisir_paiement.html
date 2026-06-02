@@ -35,58 +35,33 @@
         <label>Mode de paiement</label>
         <select name="mode" id="mode" onchange="afficherChampPaiement()" required>
             <option value="">-- Choisir un moyen --</option>
-            <option value="Carte Bancaire">Carte Bancaire</option>
-            <option value="Mobile Money">Mobile Money</option>
             <option value="CinetPay">CinetPay</option>
         </select>
 
-        <div id="carte" style="display:none;">
-            <label>Numéro de carte</label>
-            <input type="text" name="carte">
-
-            <label>Date d'expiration</label>
-            <input type="month" name="expiration">
-
-            <label>CVV</label>
-            <input type="text" name="cvv">
-        </div>
-
-        <div id="mobile" style="display:none;">
-            <label>Réseau Mobile</label>
-            <select name="reseau">
-                <option value="M-Pesa">M-Pesa</option>
-                <option value="Airtel Money">Airtel Money</option>
-                <option value="Orange Money">Orange Money</option>
-                <option value="Afrimoney">Afrimoney</option>
-            </select>
-
-            <label>Numéro de téléphone</label>
-            <input type="text" name="telephone">
-
-            <label>Code PIN Mobile Money</label>
-            <input type="password" id="pin_mobile" name="pin" placeholder="Entrez le code PIN">
-        </div>
-
         <div id="cinetpay_info" style="display:none;" class="alert alert-info">
-            Le paiement CinetPay sera cree en statut <strong>en attente</strong>.
-            Vous pourrez ensuite le confirmer depuis l'historique des commandes.
+            Vous serez redirigé vers CinetPay pour un paiement réel et sécurisé.
+            <div style="font-size:0.9em;margin-top:6px;color:#fff;opacity:0.95;">Nous acceptons uniquement CinetPay pour sécuriser et centraliser les paiements.</div>
         </div>
 
         <label>Montant à payer</label>
         <input type="text" name="montant" id="montant_input" value="{{ commande.total }}" readonly>
 
-        <button type="submit" class="btn">Valider le Paiement</button>
+        <button type="submit" class="btn" id="submit_btn">Valider le Paiement</button>
     </form>
+</div>
+
+<div id="redirect_overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;color:#fff;">
+    <div style="text-align:center;max-width:420px;margin:0 auto;padding:20px;background:rgba(0,0,0,0.5);border-radius:8px;">
+        <div style="margin-bottom:12px;">Redirection vers la page de paiement...</div>
+        <div class="spinner" style="margin-bottom:12px;">⏳</div>
+        <div id="redirect_help" style="font-size:14px;opacity:0.95;">Si la page ne se charge pas, cliquez <a href="#" id="retry_link" style="color:#ffd700;">ici</a> pour réessayer.</div>
+    </div>
 </div>
 
 <script>
     function afficherChampPaiement() {
         var mode = document.getElementById("mode").value;
-        var pinInput = document.getElementById("pin_mobile");
-        document.getElementById("carte").style.display = mode === "Carte Bancaire" ? "block" : "none";
-        document.getElementById("mobile").style.display = mode === "Mobile Money" ? "block" : "none";
         document.getElementById("cinetpay_info").style.display = mode === "CinetPay" ? "block" : "none";
-        pinInput.required = mode === "Mobile Money";
     }
 
     // Delivery selection and server-side fee calculation
@@ -158,5 +133,32 @@
     })();
 
     afficherChampPaiement();
+
+    // UX: show overlay on submit and provide retry link if redirect stalls
+    (function(){
+        var form = document.querySelector('form[action="{{ url_for('client.traiter_paiement') }}"]');
+        var overlay = document.getElementById('redirect_overlay');
+        var submitBtn = document.getElementById('submit_btn');
+        var retry = document.getElementById('retry_link');
+        if (!form) return;
+        form.addEventListener('submit', function(e){
+            // show overlay and disable button; browser will follow server redirect normally
+            overlay.style.display = 'flex';
+            if (submitBtn) submitBtn.disabled = true;
+            // after 12s, show the retry link more prominently
+            setTimeout(function(){
+                if (overlay.style.display !== 'none') {
+                    document.getElementById('redirect_help').style.opacity = '1';
+                }
+            }, 12000);
+        });
+        if (retry) {
+            retry.addEventListener('click', function(ev){
+                ev.preventDefault();
+                overlay.style.display = 'none';
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        }
+    })();
 </script>
 {% endblock %}

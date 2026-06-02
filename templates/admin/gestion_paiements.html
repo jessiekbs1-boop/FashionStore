@@ -2,7 +2,18 @@
 {% block title %}Gestion des paiements{% endblock %}
 {% block content %}
 <h2>Gestion des paiements</h2>
-
+<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;">
+  <form method="GET" action="{{ url_for('admin.gestion_paiements') }}" style="display:flex;gap:8px;align-items:center;">
+    <label style="margin:0 6px 0 0;">Filtrer :</label>
+    <select name="methode" onchange="this.form.submit()">
+      <option value="" {% if not methode_filter %}selected{% endif %}>Tous</option>
+      <option value="CinetPay" {% if methode_filter=='CinetPay' %}selected{% endif %}>CinetPay</option>
+    </select>
+  </form>
+  <div style="margin-left:auto;">
+    <a class="btn" href="{{ url_for('admin.export_paiements_csv', methode=methode_filter) }}">Exporter CSV</a>
+  </div>
+</div>
 
 <table class="table mt-4">
   <thead>
@@ -23,7 +34,8 @@
       <td>{{ payment.order.client.nom if payment.order and payment.order.client else 'N/A' }}</td>
       <td>{{ payment.date.strftime('%d/%m/%Y %H:%M') if payment.date else 'N/A' }}</td>
       <td>{{ payment.montant }} $</td>
-      <td>{{ payment.methode if payment.methode else 'N/A' }}</td>
+      {# Only display actual method when it's CinetPay; hide legacy modes #}
+      <td>{{ 'CinetPay' if payment.methode == 'CinetPay' else '-' }}</td>
       <td>
         <span class="badge {% if payment.statut == 'paye' %}text-bg-success{% else %}text-bg-warning{% endif %}">{{ payment.statut|capitalize }}</span>
       </td>

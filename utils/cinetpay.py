@@ -1,6 +1,7 @@
 import requests
 import hmac
 import hashlib
+import time
 
 class CinetPayAPI:
     """CinetPay API client for real payments."""
@@ -10,6 +11,9 @@ class CinetPayAPI:
     def __init__(self, api_key, site_id):
         self.api_key = api_key
         self.site_id = site_id
+        # last call diagnostics
+        self.last_error = None
+        self.last_response = None
     
     def generate_payment_link(self, transaction_id, amount, description, return_url, notify_url, customer_email=None, currency="XOF"):
         """
@@ -29,19 +33,43 @@ class CinetPayAPI:
         if customer_email:
             payload['customer_email'] = customer_email
         
-        try:
-            resp = requests.post(
-                f"{self.BASE_URL}/v2/payment",
-                json=payload,
-                timeout=10
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if str(data.get('code')) in ('0', '201'):
-                return data.get('data', {}).get('payment_url') or data.get('data', {}).get('payment_url_redirect')
-        except Exception as e:
-            print(f"CinetPay error: {e}")
-        
+        # Try with exponential backoff retries to be resilient to transient network issues
+        attempts = 3
+        backoffs = (0.5, 1.0, 2.0)
+        self.last_error = None
+        self.last_response = None
+        for attempt in range(attempts):
+            try:
+                resp = requests.post(
+                    f"{self.BASE_URL}/v2/payment",
+                    json=payload,
+                    timeout=10
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # store the raw response for diagnostics
+                self.last_response = data
+                code = str(data.get('code') or '')
+                # success codes 0 or 201 sometimes used by API
+                if code in ('0', '201'):
+                    # prefer common keys that CinetPay may return
+                    d = data.get('data') or {}
+                    return d.get('payment_url') or d.get('payment_url_redirect') or d.get('checkout_url')
+                # unexpected but capture message
+                self.last_error = f"unexpected_code:{code}"
+                # no need to retry on logical API error; break
+                break
+            except Exception as e:
+                # record error and retry after backoff (unless last attempt)
+                self.last_error = str(e)
+                if attempt < attempts - 1:
+                    time.sleep(backoffs[attempt] if attempt < len(backoffs) else 1.0)
+                    continue
+                # final failure
+                try:
+                    print(f"CinetPay error after {attempt+1} attempts: {e}")
+                except Exception:
+                    pass
         return None
     
     def verify_payment(self, transaction_id):

@@ -40,24 +40,18 @@
           <button type="submit" name="increase" value="1" class="btn btn-light btn-qty">+</button>
         </form>
         <div class="cart-item-subtotal">{{ (item.produit.prix * item.quantite) | round(2) }} $</div>
-        <form method="POST" action="{{ url_for('client.supprimer_du_panier', cart_key=item.cart_key) }}">
-          <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
-        </form>
+        <div class="cart-item-actions-row">
+          <form method="POST" action="{{ url_for('client.passer_commande', cart_key=item.cart_key) }}">
+            <button type="submit" class="btn btn-success btn-sm">Passer commande</button>
+          </form>
+          <form method="POST" action="{{ url_for('client.supprimer_du_panier', cart_key=item.cart_key) }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Confirmer la suppression ?');">Supprimer</button>
+          </form>
+        </div>
       </div>
     </article>
     {% endfor %}
   </div>
-
-  <aside class="cart-summary">
-    <div class="summary-inner">
-      <h3>Résumé</h3>
-      <div class="summary-line"><span>Sous-total</span><strong>{{ total | round(2) }} $</strong></div>
-      <div class="summary-line"><span>Livraison</span><strong>{{ delivery_fee | default(0) }} $</strong></div>
-      <div class="summary-line total"><span>Total</span><strong>{{ (total + (delivery_fee or 0)) | round(2) }} $</strong></div>
-      <a href="{{ url_for('client.passer_commande') }}" class="btn btn-success btn-lg w-100">Passer la commande</a>
-      <a href="{{ url_for('client.voir_produits') }}" class="btn btn-outline-secondary w-100 mt-2">Continuer mes achats</a>
-    </div>
-  </aside>
 </div>
 {% else %}
 <div class="empty-state">

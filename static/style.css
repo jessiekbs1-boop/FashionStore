@@ -1258,6 +1258,22 @@ a {
     justify-items: end;
 }
 
+.cart-item-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.cart-item-actions-row form {
+    margin: 0;
+}
+
+.cart-item-actions-row .btn {
+    min-width: 140px;
+}
+
 .cart-qty-form {
     display: flex;
     gap: 0.6rem;

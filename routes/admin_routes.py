@@ -31,8 +31,46 @@ def gestion_paiements():
     payments_query = Payment.query
     if current_user.shop_id:
         payments_query = payments_query.filter_by(shop_id=current_user.shop_id)
+
+    # optional filter: show only CinetPay payments
+    methode_filter = request.args.get('methode', '').strip()
+    if methode_filter:
+        if methode_filter == 'CinetPay':
+            payments_query = payments_query.filter_by(methode='CinetPay')
+        # else: unknown filters ignored
+
     payments = payments_query.order_by(Payment.date.desc()).all()
-    return render_template('admin/gestion_paiements.html', payments=payments)
+    return render_template('admin/gestion_paiements.html', payments=payments, methode_filter=methode_filter)
+
+
+@admin_bp.route('/admin/gestion_paiements/export')
+@login_required
+def export_paiements_csv():
+    if current_user.role != 'admin':
+        return redirect(url_for('auth.login'))
+    payments_query = Payment.query
+    if current_user.shop_id:
+        payments_query = payments_query.filter_by(shop_id=current_user.shop_id)
+    methode_filter = request.args.get('methode', '').strip()
+    if methode_filter == 'CinetPay':
+        payments_query = payments_query.filter_by(methode='CinetPay')
+
+    payments = payments_query.order_by(Payment.date.desc()).all()
+
+    import io, csv
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['id', 'order_id', 'client', 'date', 'montant', 'methode', 'statut', 'transaction_id'])
+    for p in payments:
+        client_name = p.order.client.nom if p.order and p.order.client else ''
+        date_str = p.date.strftime('%Y-%m-%d %H:%M:%S') if getattr(p, 'date', None) else ''
+        methode_label = 'CinetPay' if p.methode == 'CinetPay' else 'Legacy'
+        cw.writerow([p.id, getattr(p, 'order_id', ''), client_name, date_str, p.montant, methode_label, p.statut, p.transaction_id or ''])
+    output = si.getvalue()
+    from flask import Response
+    resp = Response(output, mimetype='text/csv')
+    resp.headers['Content-Disposition'] = 'attachment; filename=payments.csv'
+    return resp
 
 @admin_bp.route('/admin/utilisateurs')
 @login_required

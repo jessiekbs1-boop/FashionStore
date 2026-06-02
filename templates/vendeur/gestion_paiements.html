@@ -19,7 +19,7 @@
       <td>{{ payment.order.client.nom if payment.order and payment.order.client else 'N/A' }}</td>
       <td>{{ payment.date.strftime('%d/%m/%Y %H:%M') if payment.date else 'N/A' }}</td>
       <td>{{ payment.montant }} $</td>
-      <td>{{ payment.methode }}</td>
+      <td>{{ 'CinetPay' if payment.methode == 'CinetPay' else '-' }}</td>
     </tr>
     {% endfor %}
   </tbody>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Réessayer le Paiement - Store Fashion{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin:30px auto;padding:20px;background:#fff;border-radius:8px;">
+    <h2>Problème lors de la préparation du paiement</h2>
+    <p>Nous n'avons pas pu générer le lien de paiement CinetPay pour la commande <strong>#{{ payment.order_id }}</strong>.</p>
+    <p>Vous pouvez réessayer ci-dessous. Si le problème persiste, contactez le support.</p>
+
+    <form method="POST" action="{{ url_for('client.cinetpay_retry', payment_id=payment.id) }}">
+        <button class="btn" type="submit">Réessayer le paiement</button>
+        <a href="{{ url_for('client.client_orders') }}" class="btn" style="background:#6c757d;margin-top:8px;display:inline-block;text-decoration:none;">Voir mes commandes</a>
+    </form>
+
+    <h3 style="margin-top:18px;">Diagnostics récents</h3>
+    <ul>
+        {% for ev in events %}
+            <li style="font-size:13px;margin-bottom:6px;">[{{ ev.created_at }}] {{ ev.event_type }} - {{ ev.payload[:200] }}</li>
+        {% else %}
+            <li>Aucun diagnostic disponible.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

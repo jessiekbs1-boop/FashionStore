@@ -176,14 +176,22 @@ def supprimer_du_panier(cart_key):
     return redirect(url_for('client.voir_panier'))
 
 @client_bp.route('/client/commande/passer', methods=['GET', 'POST'])
+@client_bp.route('/client/commande/passer/<path:cart_key>', methods=['POST'])
 @login_required
-def passer_commande():
+def passer_commande(cart_key=None):
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
     panier = session.get('panier', {})
     if not panier:
         flash('Votre panier est vide.')
         return redirect(url_for('client.client_home'))
+
+    if cart_key:
+        if cart_key not in panier:
+            flash('Produit introuvable dans le panier.', 'danger')
+            return redirect(url_for('client.voir_panier'))
+        panier = {cart_key: panier[cart_key]}
+
     total = 0
     for cart_key, entry in panier.items():
         product_id, _, _ = _parse_cart_key(cart_key)
@@ -239,7 +247,10 @@ def passer_commande():
         item = OrderItem(order_id=commande.id, product_id=produit.id, quantite=qty, prix=produit.prix)
         db.session.add(item)
     db.session.commit()
-    session['panier'] = {}
+    if cart_key:
+        session['panier'].pop(cart_key, None)
+    else:
+        session['panier'] = {}
     flash('Commande passee avec succes.')
     return redirect(url_for('client.choisir_paiement', order_id=commande.id))
 
@@ -270,6 +281,10 @@ def traiter_paiement():
 
     if montant is None or montant <= 0:
         flash('Montant invalide.', 'danger')
+        return redirect(url_for('client.choisir_paiement', order_id=commande.id))
+
+    if methode != 'CinetPay':
+        flash('Le paiement réel se fait uniquement via CinetPay.', 'danger')
         return redirect(url_for('client.choisir_paiement', order_id=commande.id))
 
     # Delivery fields: may be set from the payment form
@@ -303,22 +318,12 @@ def traiter_paiement():
     db.session.flush()
 
     payment_status = 'en attente'
-    transaction_id = None
-
-    if methode in ('Carte Bancaire', 'Mobile Money'):
-        payment_status = 'paye'
-        commande.statut = 'paye'
-    elif methode == 'CinetPay':
-        payment_status = 'en attente'
-        transaction_id = f"CINETPAY-{uuid.uuid4().hex[:12].upper()}"
-    else:
-        flash('Mode de paiement non supporte.', 'danger')
-        return redirect(url_for('client.choisir_paiement', order_id=commande.id))
+    transaction_id = f"CINETPAY-{uuid.uuid4().hex[:12].upper()}"
 
     payment = Payment(
         order_id=commande.id,
         montant=montant,
-        methode=methode,
+        methode='CinetPay',
         statut=payment_status,
         transaction_id=transaction_id,
         shop_id=commande.shop_id,
@@ -332,10 +337,8 @@ def traiter_paiement():
         source='app'
     ))
     db.session.commit()
-    flash('Paiement traite avec succes.')
-    if methode == 'CinetPay':
-        return redirect(url_for('client.cinetpay_checkout', payment_id=payment.id))
-    return redirect(url_for('client.client_orders'))
+    flash('Redirection vers le paiement CinetPay.', 'info')
+    return redirect(url_for('client.cinetpay_checkout', payment_id=payment.id))
 
 
 @client_bp.route('/client/delivery/calc', methods=['POST'])
@@ -447,7 +450,6 @@ def cinetpay_checkout(payment_id):
         customer_email=current_user.email,
         currency="XOF"
     )
-    
     if payment_url:
         db.session.add(PaymentEvent(
             payment_id=payment.id,
@@ -457,16 +459,27 @@ def cinetpay_checkout(payment_id):
         ))
         db.session.commit()
         return redirect(payment_url)
-    else:
-        db.session.add(PaymentEvent(
-            payment_id=payment.id,
-            event_type='payment_redirect_failed',
-            payload='no_payment_url',
-            source='app'
-        ))
-        db.session.commit()
-        flash('Failed to generate CinetPay payment link.', 'danger')
-        return redirect(url_for('client.choisir_paiement', order_id=payment.order_id))
+
+    # Failed to obtain a payment URL — include diagnostics from the client if available.
+    diagnostics = []
+    if getattr(cinetpay, 'last_error', None):
+        diagnostics.append(f"error={cinetpay.last_error}")
+    if getattr(cinetpay, 'last_response', None):
+        try:
+            diagnostics.append(f"resp={str(cinetpay.last_response)[:1500]}")
+        except Exception:
+            diagnostics.append('resp=unserializable')
+
+    payload_detail = 'no_payment_url' + (';' + ';'.join(diagnostics) if diagnostics else '')
+    db.session.add(PaymentEvent(
+        payment_id=payment.id,
+        event_type='payment_redirect_failed',
+        payload=payload_detail[:2000],
+        source='app'
+    ))
+    db.session.commit()
+    flash('Erreur lors de la génération du lien de paiement. Vous pouvez réessayer ci-dessous ou contacter le support.', 'danger')
+    return redirect(url_for('client.cinetpay_retry_page', payment_id=payment.id))
 
 
 @client_bp.route('/client/paiement/cinetpay/retour/<int:payment_id>')
@@ -577,6 +590,87 @@ def cinetpay_webhook():
         print(f"Webhook error: {e}")
         return {'error': str(e)}, 500
 
+
+@client_bp.route('/client/paiement/cinetpay/retry/<int:payment_id>', methods=['GET'])
+@login_required
+def cinetpay_retry_page(payment_id):
+    if current_user.role != 'client':
+        return redirect(url_for('auth.login'))
+
+    payment = Payment.query.join(Order, Payment.order_id == Order.id).filter(
+        Payment.id == payment_id,
+        Order.client_id == current_user.id,
+        Payment.methode == 'CinetPay'
+    ).first_or_404()
+
+    # Fetch latest payment events to show diagnostics
+    events = PaymentEvent.query.filter_by(payment_id=payment.id).order_by(PaymentEvent.created_at.desc()).limit(6).all()
+    return render_template('client/cinetpay_retry.html', payment=payment, events=events)
+
+
+@client_bp.route('/client/paiement/cinetpay/retry/<int:payment_id>', methods=['POST'])
+@login_required
+def cinetpay_retry(payment_id):
+    if current_user.role != 'client':
+        return redirect(url_for('auth.login'))
+
+    payment = Payment.query.join(Order, Payment.order_id == Order.id).filter(
+        Payment.id == payment_id,
+        Order.client_id == current_user.id,
+        Payment.methode == 'CinetPay'
+    ).first_or_404()
+
+    api_key = current_app.config.get('CINETPAY_API_KEY')
+    site_id = current_app.config.get('CINETPAY_SITE_ID')
+    if not api_key or not site_id:
+        flash('CinetPay non configuré.', 'danger')
+        return redirect(url_for('client.choisir_paiement', order_id=payment.order_id))
+
+    cinetpay = CinetPayAPI(api_key, site_id)
+    return_url = url_for('client.cinetpay_return', payment_id=payment.id, _external=True)
+    notify_url = url_for('client.cinetpay_webhook', _external=True)
+
+    payment_url = cinetpay.generate_payment_link(
+        transaction_id=payment.transaction_id,
+        amount=payment.montant,
+        description=f"Order #{payment.order_id}",
+        return_url=return_url,
+        notify_url=notify_url,
+        customer_email=current_user.email,
+        currency="XOF"
+    )
+
+    if payment_url:
+        db.session.add(PaymentEvent(
+            payment_id=payment.id,
+            event_type='payment_redirected_retry',
+            payload='redirect_to_cinetpay',
+            source='app'
+        ))
+        db.session.commit()
+        return redirect(payment_url)
+
+    diagnostics = []
+    if getattr(cinetpay, 'last_error', None):
+        diagnostics.append(f"error={cinetpay.last_error}")
+    if getattr(cinetpay, 'last_response', None):
+        try:
+            diagnostics.append(f"resp={str(cinetpay.last_response)[:1500]}")
+        except Exception:
+            diagnostics.append('resp=unserializable')
+
+    payload_detail = 'no_payment_url_retry' + (';' + ';'.join(diagnostics) if diagnostics else '')
+    db.session.add(PaymentEvent(
+        payment_id=payment.id,
+        event_type='payment_redirect_failed_retry',
+        payload=payload_detail[:2000],
+        source='app'
+    ))
+    db.session.commit()
+
+    flash('Nouvel essai échoué. Contactez le support si le problème persiste.', 'danger')
+    return redirect(url_for('client.cinetpay_retry_page', payment_id=payment.id))
+
 @client_bp.route('/client/produits')
 @login_required
 def voir_produits():
@@ -632,7 +726,7 @@ def voir_produits():
     tailles = ['XS', 'S', 'M', 'L', 'XL']
 
     panier = session.get('panier', {})
-    panier_count = sum(int(q) for q in panier.values()) if panier else 0
+    panier_count = sum(_cart_quantity(q) for q in panier.values()) if panier else 0
 
     return render_template(
         'client/produits.html',
