@@ -78,7 +78,14 @@ def client_orders():
     if current_user.role != 'client':
         return redirect(url_for('auth.login'))
     orders = Order.query.filter_by(client_id=current_user.id).order_by(Order.date.desc()).all()
-    return render_template('client/commandes.html', orders=orders)
+    payment_thank_you = session.pop('payment_thank_you', None)
+    payment_thank_you_order_id = session.pop('payment_thank_you_order_id', None)
+    return render_template(
+        'client/commandes.html',
+        orders=orders,
+        payment_thank_you=payment_thank_you,
+        payment_thank_you_order_id=payment_thank_you_order_id,
+    )
 
 @client_bp.route('/client/panier')
 @login_required
@@ -512,8 +519,10 @@ def cinetpay_return(payment_id):
                     source='return'
                 ))
             db.session.commit()
-            flash('Paiement CinetPay confirme avec succes.', 'success')
-            return redirect(url_for('client.client_orders'))
+            session['payment_thank_you'] = 'Merci pour votre confiance. Votre paiement CinetPay a été confirmé avec succès.'
+            session['payment_thank_you_order_id'] = payment.order_id
+            flash('Merci pour votre confiance. Votre paiement CinetPay a été confirmé avec succès.', 'success')
+            return redirect(url_for('client.client_orders', _anchor=f'order-{payment.order_id}'))
     
     flash('Paiement en attente de confirmation. Verifiez votre compte.', 'info')
     return redirect(url_for('client.client_orders'))

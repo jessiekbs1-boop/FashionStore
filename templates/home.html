@@ -1,18 +1,73 @@
 {% extends "base.html" %}
 {% block title %}Store Fashion - Accueil{% endblock %}
 {% block content %}
-<section class="landing-shell">
-  <div class="landing-hero">
-    <h1>Bienvenue sur <span>Store Fashion</span></h1>
-    <p>Découvrez les meilleurs produits africains. Achetez en confiance avec paiement sécurisé via CinetPay.</p>
+<section class="landing-shell landing-shell-modern">
+  <div class="landing-hero landing-hero-grid">
+    <div class="landing-copy">
+      <span class="hero-eyebrow">Marketplace africain premium</span>
+      <h1>Mode, élégance et paiement fiable au même endroit.</h1>
+      <p>Store Fashion rassemble des vendeurs vérifiés, un parcours d'achat fluide et le paiement sécurisé CinetPay dans une interface claire et moderne.</p>
 
-    <div class="landing-actions">
-      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg landing-primary-btn">
-        Connexion <i class="fa-solid fa-arrow-right-long"></i>
-      </a>
-      <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg landing-secondary-btn">
-        Inscription
-      </a>
+      <div class="landing-actions">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg landing-primary-btn">
+          Connexion <i class="fa-solid fa-arrow-right-long"></i>
+        </a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg landing-secondary-btn">
+          Créer un compte
+        </a>
+      </div>
+
+      <div class="hero-metrics">
+        <div class="hero-metric-card">
+          <strong>Paiement sécurisé</strong>
+          <span>CinetPay intégré</span>
+        </div>
+        <div class="hero-metric-card">
+          <strong>Vendeurs fiables</strong>
+          <span>Contrôle de qualité</span>
+        </div>
+        <div class="hero-metric-card">
+          <strong>Expérience rapide</strong>
+          <span>Mobile-first</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-preview-card">
+      <div class="landing-preview-top">
+        <span class="preview-chip">Nouveauté</span>
+        <span class="preview-chip muted">Collections sélectionnées</span>
+      </div>
+
+      <div class="landing-preview-panel">
+        <div class="preview-badge-row">
+          <span><i class="fa-solid fa-shield-halved"></i> Paiement sécurisé</span>
+          <span><i class="fa-solid fa-truck-fast"></i> Livraison suivie</span>
+        </div>
+        <div class="preview-feature-list">
+          <article>
+            <i class="fa-solid fa-shirt"></i>
+            <div>
+              <strong>Mode tendance</strong>
+              <p>Des produits sélectionnés pour inspirer confiance.</p>
+            </div>
+          </article>
+          <article>
+            <i class="fa-solid fa-comments"></i>
+            <div>
+              <strong>Contact direct</strong>
+              <p>Discutez avec le vendeur avant de valider.</p>
+            </div>
+          </article>
+          <article>
+            <i class="fa-solid fa-receipt"></i>
+            <div>
+              <strong>Suivi clair</strong>
+              <p>Commandes, paiements et messages centralisés.</p>
+            </div>
+          </article>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -42,11 +97,16 @@
   <section class="home-seller-cta">
     <div class="home-seller-cta-inner">
       <h2>Prêt à vendre ?</h2>
-      <p>Rejoignez des milliers de vendeurs qui font confiance à Store Fashion.</p>
+      <p>Rejoignez une vitrine moderne pensée pour mettre vos produits en valeur et convertir plus vite.</p>
       <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg home-seller-btn">
         Créer votre boutique <i class="fa-solid fa-arrow-right-long"></i>
       </a>
     </div>
   </section>
+
+  <footer class="home-copyright">
+    <span class="home-copyright-line"></span>
+    <span class="home-copyright-text">Copyright 2026 - KBS</span>
+  </footer>
 </section>
 {% endblock %}

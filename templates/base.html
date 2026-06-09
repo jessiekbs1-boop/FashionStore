@@ -26,18 +26,40 @@
   </a>
   
   <a href="#" class="taskbar-item" title="Tendances" data-bs-toggle="modal" data-bs-target="#trendModal">
-    <i class="fa-solid fa-fire"></i>
+    <span style="width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f97316, #fbbf24); box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35);">
+      <i class="fa-solid fa-fire" style="color: #fff; font-size: 0.95rem;"></i>
+    </span>
     <span>Tendances</span>
+  </a>
+
+  <a href="{{ url_for('client.mes_favoris') }}" class="taskbar-item {% if request.endpoint == 'client.mes_favoris' %}active{% endif %}" title="Favoris">
+    <span style="width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #ef4444, #fb7185); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);">
+      <i class="fa-solid fa-heart" style="color: #fff; font-size: 0.95rem;"></i>
+    </span>
+    <span>Favoris</span>
+    {% if favorites_count > 0 %}<span class="taskbar-badge">{{ favorites_count }}</span>{% endif %}
   </a>
   
   <a href="{{ url_for('client.voir_panier') }}" class="taskbar-item {% if request.endpoint in ['client.voir_panier', 'client.update_panier', 'client.retirer_panier'] %}active{% endif %}" title="Panier">
-    <i class="fa-solid fa-cart-shopping"></i>
+    <span style="width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0ea5e9, #22c55e); box-shadow: 0 8px 20px rgba(14, 165, 233, 0.30);">
+      <i class="fa-solid fa-cart-shopping" style="color: #fff; font-size: 0.92rem;"></i>
+    </span>
     <span>Panier</span>
     {% if cart_item_count > 0 %}<span class="taskbar-badge">{{ cart_item_count }}</span>{% endif %}
   </a>
+
+  <a href="{{ url_for('client.client_messages') }}" class="taskbar-item {% if request.endpoint == 'client.client_messages' %}active{% endif %}" title="Messages">
+    <span style="width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8b5cf6, #ec4899); box-shadow: 0 8px 20px rgba(139, 92, 246, 0.30);">
+      <i class="fa-solid fa-comments" style="color: #fff; font-size: 0.9rem;"></i>
+    </span>
+    <span>Messages</span>
+    {% if unread_message_count > 0 %}<span class="taskbar-badge">{{ unread_message_count }}</span>{% endif %}
+  </a>
   
   <a href="#" class="taskbar-item" title="Moi" data-bs-toggle="modal" data-bs-target="#profileModal">
-    <i class="fa-solid fa-user"></i>
+    <span style="width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #111827, #4b5563); box-shadow: 0 8px 20px rgba(17, 24, 39, 0.25);">
+      <i class="fa-solid fa-user" style="color: #fff; font-size: 0.9rem;"></i>
+    </span>
     <span>Moi</span>
   </a>
 </div>
@@ -104,8 +126,8 @@
 </div>
 {% endif %}
 
-<!-- AUTH PAGES NAVBAR (pour login/register) -->
-{% if not current_user.is_authenticated and request.endpoint not in ['auth.login', 'auth.register'] %}
+<!-- PUBLIC NAVBAR: always visible on the home page, and on auth pages when not logged in -->
+{% if request.endpoint == 'auth.index' or (not current_user.is_authenticated and request.endpoint not in ['auth.login', 'auth.register']) %}
 <nav class="navbar navbar-expand-lg public-navbar">
   <div class="container-fluid public-navbar-inner">
     <a class="navbar-brand public-brand" href="{{ url_for('auth.index') }}">
@@ -167,44 +189,34 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="trend-list">
-          <a href="#" class="trend-item d-flex align-items-center gap-3 p-3 rounded">
-            <div class="trend-icon" style="background: #fbbf24; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+        {% if trending_products %}
+        <div class="trend-list d-grid gap-3">
+          {% for item in trending_products %}
+          <a href="{{ url_for('client.detail_produit', product_id=item.product.id) }}" class="trend-item d-flex align-items-center gap-3 p-3 rounded text-decoration-none">
+            <div class="trend-icon flex-shrink-0" style="background: #111827; width: 58px; height: 58px; border-radius: 14px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              {% if item.product.image_principale %}
+              <img src="{{ url_for('static', filename='images/' ~ item.product.image_principale) }}" alt="{{ item.product.nom }}" style="width: 100%; height: 100%; object-fit: cover;">
+              {% else %}
               <i class="fa-solid fa-shirt text-white fs-5"></i>
+              {% endif %}
             </div>
-            <div>
-              <div class="fw-600"># BacklessStyle</div>
-              <small class="text-muted">Captivating backless design</small>
+            <div class="flex-grow-1">
+              <div class="fw-600 text-dark">{{ item.product.nom[:30] }}{% if item.product.nom|length > 30 %}...{% endif %}</div>
+              <small class="text-muted">{{ item.label }}{% if item.sold_quantity > 0 %} · {{ item.sold_quantity }} vendu{{ 's' if item.sold_quantity > 1 else '' }}{% endif %}</small>
             </div>
-          </a>
-          <a href="#" class="trend-item d-flex align-items-center gap-3 p-3 rounded">
-            <div class="trend-icon" style="background: #ef4444; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <i class="fa-solid fa-heart text-white fs-5"></i>
-            </div>
-            <div>
-              <div class="fw-600"># SexyLBDs</div>
-              <small class="text-muted">Little Black Dresses</small>
+            <div class="text-end flex-shrink-0">
+              <div class="fw-700 text-dark">${{ item.product.prix }}</div>
+              <small class="text-muted">Voir</small>
             </div>
           </a>
-          <a href="#" class="trend-item d-flex align-items-center gap-3 p-3 rounded">
-            <div class="trend-icon" style="background: #3b82f6; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <i class="fa-solid fa-image text-white fs-5"></i>
-            </div>
-            <div>
-              <div class="fw-600"># GalleryGirl</div>
-              <small class="text-muted">Elegant & sophisticated</small>
-            </div>
-          </a>
-          <a href="#" class="trend-item d-flex align-items-center gap-3 p-3 rounded">
-            <div class="trend-icon" style="background: #8b5cf6; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-              <i class="fa-solid fa-star text-white fs-5"></i>
-            </div>
-            <div>
-              <div class="fw-600"># CaprisRetro</div>
-              <small class="text-muted">Vintage & retro vibes</small>
-            </div>
-          </a>
+          {% endfor %}
         </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fa-solid fa-fire fs-2 d-block mb-3"></i>
+          <p class="mb-0">Aucune tendance disponible pour le moment.</p>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -84,8 +84,12 @@ def test_order_creation_and_payment(client):
         assert payment.montant == 20.0
 
 def test_admin_delete_user_cascade(client):
-    # Register admin and user
-    register_user(client, 'admin@example.com', 'adminpass', role='admin')
+    # Create admin directly and register a regular user
+    with app.app_context():
+        admin = User(nom='Admin', email='admin@example.com', role='admin', actif=True)
+        admin.set_password('adminpass')
+        db.session.add(admin)
+        db.session.commit()
     register_user(client, 'user@example.com', 'userpass', role='client')
 
     # Login as admin

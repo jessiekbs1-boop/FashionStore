@@ -54,10 +54,13 @@ def inject_notifications():
             'unread_message_count': 0,
             'cart_item_count': 0,
             'new_order_count': 0,
+            'trending_products': [],
+            'favorites_count': 0,
         }
 
-    from models import Message, Order, OrderItem, Product
+    from models import Favorite, Message, Order, OrderItem, Product
     unread_count = Message.query.filter_by(destinataire_id=current_user.id, lu=False).count()
+    favorites_count = Favorite.query.filter_by(user_id=current_user.id).count()
 
     user_shop_id = getattr(current_user, 'shop_id', None)
 
@@ -91,10 +94,48 @@ def inject_notifications():
             admin_orders_query = admin_orders_query.filter(Order.shop_id == user_shop_id)
         new_order_count = admin_orders_query.count()
 
+    trending_products = []
+    if current_user.role == 'client':
+        trending_rows = (
+            db.session.query(
+                Product,
+                db.func.coalesce(db.func.sum(OrderItem.quantite), 0).label('sold_quantity'),
+            )
+            .join(OrderItem, OrderItem.product_id == Product.id)
+            .join(Order, Order.id == OrderItem.order_id)
+            .filter(Order.statut.in_(['paye', 'expedie', 'livre']))
+            .group_by(Product.id)
+            .order_by(db.func.coalesce(db.func.sum(OrderItem.quantite), 0).desc(), Product.created_at.desc())
+            .limit(4)
+            .all()
+        )
+
+        if trending_rows:
+            trending_products = [
+                {
+                    'product': product,
+                    'sold_quantity': int(sold_quantity or 0),
+                    'label': 'Best-seller' if int(sold_quantity or 0) > 0 else 'Nouveau',
+                }
+                for product, sold_quantity in trending_rows
+            ]
+        else:
+            recent_products = Product.query.order_by(Product.created_at.desc()).limit(4).all()
+            trending_products = [
+                {
+                    'product': product,
+                    'sold_quantity': 0,
+                    'label': 'Nouveau',
+                }
+                for product in recent_products
+            ]
+
     return {
         'unread_message_count': unread_count,
         'cart_item_count': cart_item_count,
         'new_order_count': new_order_count,
+        'trending_products': trending_products,
+        'favorites_count': favorites_count,
     }
 
 app.register_blueprint(auth_bp)

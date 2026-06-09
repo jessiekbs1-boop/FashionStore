@@ -46,40 +46,6 @@
 
   <section class="dashboard-card-shell">
     <div class="section-header section-header-compact">
-      <h2>Catégories</h2>
-    </div>
-    <div class="category-circles category-circles-card">
-      <div class="circles-inner">
-        <a href="{{ url_for('client.voir_produits', categorie='women') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-person-dress"></i></div>
-          <div class="circle-label">Femme</div>
-        </a>
-        <a href="{{ url_for('client.voir_produits', categorie='curve') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-person-cane"></i></div>
-          <div class="circle-label">Taille +</div>
-        </a>
-        <a href="{{ url_for('client.voir_produits', categorie='kids') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-child"></i></div>
-          <div class="circle-label">Enfant</div>
-        </a>
-        <a href="{{ url_for('client.voir_produits', categorie='men') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-person"></i></div>
-          <div class="circle-label">Homme</div>
-        </a>
-        <a href="{{ url_for('client.voir_produits', categorie='shoes') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-shoe-prints"></i></div>
-          <div class="circle-label">Chaussures</div>
-        </a>
-        <a href="{{ url_for('client.voir_produits', categorie='accessories') }}" class="circle-item">
-          <div class="circle-icon"><i class="fa-solid fa-watch-smart"></i></div>
-          <div class="circle-label">Accessoires</div>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section class="dashboard-card-shell">
-    <div class="section-header section-header-compact">
       <h2>Produits récents</h2>
       <a href="{{ url_for('client.voir_produits') }}" class="see-all-link">Voir le catalogue</a>
     </div>

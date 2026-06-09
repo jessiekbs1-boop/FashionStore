@@ -220,7 +220,7 @@ def register():
             flash('Vous devez accepter les conditions d\'utilisation.', 'danger')
             return redirect(url_for('auth.register'))
 
-        if role not in ('client', 'vendeur', 'admin'):
+        if role not in ('client', 'vendeur'):
             flash('Role invalide.')
             return redirect(url_for('auth.register'))
 
@@ -291,6 +291,13 @@ def logout():
 
 @auth_bp.route('/')
 def index():
+    if current_user.is_authenticated:
+        if current_user.role == 'client':
+            return redirect(url_for('client.client_home'))
+        if current_user.role == 'vendeur':
+            return redirect(url_for('vendeur.vendeur_home'))
+        if current_user.role == 'admin':
+            return redirect(url_for('admin.admin_home'))
     return render_template('home.html')
 
 

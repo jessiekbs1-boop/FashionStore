@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Connexion{% endblock %}
 {% block content %}
-<section class="auth-shell">
-  <div class="auth-card">
+<section class="auth-shell auth-shell-login">
+  <div class="auth-card auth-card-compact">
+    <div class="auth-register-badge">Store Fashion</div>
+    <h1 class="auth-compact-title">Connexion</h1>
+    <p class="auth-compact-sub">Entrez vos identifiants pour reprendre votre session.</p>
+
     <div class="social-login-stack">
       <a href="{{ url_for('auth.oauth_start', provider='google') }}" class="social-login-btn social-google" aria-label="Continuer avec Google">
         <span class="social-icon google-icon">G</span>
@@ -10,27 +14,25 @@
       </a>
       <a href="{{ url_for('auth.oauth_start', provider='apple') }}" class="social-login-btn social-apple" aria-label="Continuer avec Apple">
         <i class="fa-brands fa-apple"></i>
-        <span>Continuez avec Apple</span>
+        <span>Continuer avec Apple</span>
       </a>
     </div>
 
-    <div class="auth-divider">
-      <span>ou</span>
-    </div>
+    <div class="auth-divider"><span>ou</span></div>
 
-    <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+    <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form auth-form-modern">
       <div class="mb-3">
         <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control form-control-lg" id="email" name="email" required>
+        <input type="email" class="form-control form-control-lg" id="email" name="email" placeholder="vous@exemple.com" required>
       </div>
       <div class="mb-3">
         <label for="password" class="form-label">Mot de passe</label>
-        <input type="password" class="form-control form-control-lg" id="password" name="password" required>
+        <input type="password" class="form-control form-control-lg" id="password" name="password" placeholder="Votre mot de passe" required>
       </div>
       <button type="submit" class="btn btn-success btn-lg w-100">Se connecter</button>
     </form>
 
-    <p class="auth-footer-note">Vous découvrez FashionStore ? <a href="{{ url_for('auth.register') }}">Créez un compte.</a></p>
+    <p class="auth-footer-note">Vous découvrez FashionStore ? <a href="{{ url_for('auth.register') }}">Créez un compte</a></p>
   </div>
 </section>
 {% endblock %}

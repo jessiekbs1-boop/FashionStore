@@ -7,10 +7,22 @@
     <p>Suivi des statuts: en attente, payé, expédié, livré.</p>
 </section>
 
+{% if payment_thank_you %}
+<div class="alert alert-success d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3" role="alert" style="border-left: 5px solid #198754; box-shadow: 0 10px 24px rgba(25, 135, 84, 0.12);">
+    <div>
+        <strong>{{ payment_thank_you }}</strong>
+        <div class="small">Votre paiement vient d’être validé et la commande est mise à jour.</div>
+    </div>
+    {% if payment_thank_you_order_id %}
+    <a href="#order-{{ payment_thank_you_order_id }}" class="btn btn-success btn-sm">Voir ma commande</a>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if orders %}
 <div class="orders-stack">
     {% for order in orders %}
-    <article class="order-card">
+    <article class="order-card" id="order-{{ order.id }}">
         <div class="order-card-top">
             <div>
                 <h3>Commande #{{ order.id }}</h3>
